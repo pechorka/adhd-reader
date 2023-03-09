@@ -149,11 +149,11 @@ func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
 }
 
 func (b *Bot) handleMsg(msg *tgbotapi.Message) {
-	// defer func() {
-	// 	if rec := recover(); rec != nil {
-	// 		b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
-	// 	}
-	// }()
+	defer func() {
+		if rec := recover(); rec != nil {
+			b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
+		}
+	}()
 
 	if msg.Document != nil {
 		b.saveTextFromDocument(msg)
