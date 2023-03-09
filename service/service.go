@@ -15,14 +15,15 @@ type Service struct {
 }
 
 func NewService(s *storage.Storage) *Service {
-	return &Service{s: s, chunkSize: 200}
+	return &Service{s: s, chunkSize: 500}
 }
 
 func (s *Service) AddText(userID int64, textName, text string) error {
 	textChunks := splitText(text, s.chunkSize)
 	data := storage.Text{
-		Name:   textName,
-		Chunks: textChunks,
+		Name:     textName,
+		Chunks:   textChunks,
+		LastRead: -1,
 	}
 	texts, err := s.s.GetTexts(userID)
 	if err != nil {
@@ -90,16 +91,19 @@ func (s *Service) PrevChunk(userID int64) (string, error) {
 		return "", err
 	}
 	text := texts.Texts[texts.Current]
-	if text.LastRead <= 0 {
+	if text.LastRead <= -1 {
 		return "", ErrFirstChunk
 	}
 	text.LastRead--
-	chunk := text.Chunks[text.LastRead]
 	texts.Texts[texts.Current] = text
 	err = s.s.PutText(userID, texts)
 	if err != nil {
 		return "", err
 	}
+	if text.LastRead < 0 {
+		return "", ErrFirstChunk
+	}
+	chunk := text.Chunks[text.LastRead]
 	return chunk, nil
 }
 
