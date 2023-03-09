@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/aakrasnova/zone-mate/storage"
 )
@@ -109,12 +110,24 @@ func (s *Service) PrevChunk(userID int64) (string, error) {
 
 func splitText(text string, chunkSize int) []string {
 	var chunks []string
-	for i := 0; i < len(text); i += chunkSize {
+	for i := 0; i < len(text); {
 		end := i + chunkSize
+		for end < len(text)-1 {
+			end++
+			if endOfTheSentence(text[end]) {
+				end++ // include space ender
+				break
+			}
+		}
 		if end > len(text) {
 			end = len(text)
 		}
-		chunks = append(chunks, text[i:end])
+		chunks = append(chunks, strings.TrimSpace(text[i:end]))
+		i = end
 	}
 	return chunks
+}
+
+func endOfTheSentence(b byte) bool {
+	return b == '.' || b == '!' || b == '?'
 }
