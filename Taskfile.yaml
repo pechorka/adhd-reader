@@ -1,0 +1,11 @@
+version: '3'
+
+tasks:
+  bot:
+    cmds:
+      - go install
+      - zone-mate.exe
+  
+  test:
+    cmds:
+      - go test ./...
