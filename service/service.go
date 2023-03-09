@@ -33,7 +33,8 @@ func (s *Service) AddText(userID int64, textName, text string) error {
 	}
 	if texts == nil {
 		texts = &storage.UserTexts{
-			Texts: []storage.Text{data},
+			Texts:   []storage.Text{data},
+			Current: -1,
 		}
 	} else {
 		texts.Texts = append(texts.Texts, data)
@@ -61,7 +62,7 @@ func (s *Service) SelectText(userID int64, current int) error {
 	if err != nil {
 		return err
 	}
-	if current >= len(texts.Texts) {
+	if current >= len(texts.Texts) || current < 0 {
 		return errors.New("invalid text index")
 	}
 	texts.Current = current
@@ -73,11 +74,11 @@ func (s *Service) SetPage(userID int64, page int) error {
 	if err != nil {
 		return err
 	}
-	if texts == nil {
+	if texts == nil || texts.Current == -1 {
 		return ErrTextNotSelected
 	}
 	text := texts.Texts[texts.Current]
-	if page >= len(text.Chunks) {
+	if page >= len(text.Chunks) || page < 0 {
 		return errors.New("invalid page index")
 	}
 	text.LastRead = page
