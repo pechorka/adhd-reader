@@ -165,6 +165,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.start(msg)
 	case "list":
 		b.list(msg)
+	case "page":
+		b.page(msg)
 	}
 }
 
@@ -193,6 +195,25 @@ func (b *Bot) list(msg *tgbotapi.Message) {
 	replyMsg.ReplyMarkup = markup
 	replyMsg.ReplyToMessageID = msg.MessageID
 	b.send(replyMsg)
+}
+
+func (b *Bot) page(msg *tgbotapi.Message) {
+	strPage := msg.CommandArguments()
+	page, err := strconv.Atoi(strPage)
+	if err != nil {
+		b.replyError(msg, "Failed to parse page", err)
+		return
+	}
+	err = b.s.SetPage(msg.From.ID, page)
+	if err != nil {
+		if err == service.ErrTextNotSelected {
+			b.replyWithText(msg, "Text not selected")
+			return
+		}
+		b.replyError(msg, "Failed to set page", err)
+		return
+	}
+	b.replyWithText(msg, "Page set")
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {

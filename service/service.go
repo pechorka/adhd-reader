@@ -9,6 +9,7 @@ import (
 
 var ErrTextFinished = errors.New("text finished")
 var ErrFirstChunk = errors.New("first chunk")
+var ErrTextNotSelected = errors.New("text is not selected")
 
 type Service struct {
 	s         *storage.Storage
@@ -64,6 +65,23 @@ func (s *Service) SelectText(userID int64, current int) error {
 		return errors.New("invalid text index")
 	}
 	texts.Current = current
+	return s.s.PutText(userID, texts)
+}
+
+func (s *Service) SetPage(userID int64, page int) error {
+	texts, err := s.s.GetTexts(userID)
+	if err != nil {
+		return err
+	}
+	if texts == nil {
+		return ErrTextNotSelected
+	}
+	text := texts.Texts[texts.Current]
+	if page >= len(text.Chunks) {
+		return errors.New("invalid page index")
+	}
+	text.LastRead = page
+	texts.Texts[texts.Current] = text
 	return s.s.PutText(userID, texts)
 }
 
