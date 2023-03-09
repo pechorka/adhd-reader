@@ -64,6 +64,12 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 	case cb.Data == prevChunk:
 		b.prevChunk(cb)
 	}
+	// Respond to the callback query, telling Telegram to show the user
+	// a message with the data received.
+	callback := tgbotapi.NewCallback(cb.ID, cb.Data)
+	if _, err := b.bot.Request(callback); err != nil {
+		log.Println("Failed to respond to callback query:", err)
+	}
 }
 
 func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
@@ -199,7 +205,7 @@ func (b *Bot) list(msg *tgbotapi.Message) {
 
 func (b *Bot) page(msg *tgbotapi.Message) {
 	strPage := msg.CommandArguments()
-	page, err := strconv.Atoi(strPage)
+	page, err := strconv.Atoi(strings.TrimSpace(strPage))
 	if err != nil {
 		b.replyError(msg, "Failed to parse page", err)
 		return
