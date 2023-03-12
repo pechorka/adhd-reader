@@ -33,6 +33,12 @@ func (s *Service) SetChunkSize(userID int64, chunkSize int64) error {
 }
 
 func (s *Service) AddText(userID int64, textName, text string) error {
+	if textName == "" {
+		return errors.New("text name is empty")
+	}
+	if len(textName) > 255 {
+		return errors.New("text name is too long, max length is 255 (less if you use emojis/non-ascii symbols)")
+	}
 	chunkSize, err := s.s.GetChunkSize(userID)
 	if err != nil {
 		return err

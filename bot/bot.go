@@ -15,6 +15,7 @@ const (
 	textSelect = "text-select:"
 	nextChunk  = "next-chunk"
 	prevChunk  = "prev-chunk"
+	deleteText = "delete-text:"
 )
 
 type Bot struct {
@@ -59,6 +60,8 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 	switch {
 	case strings.HasPrefix(cb.Data, textSelect):
 		b.selectText(cb)
+	case strings.HasPrefix(cb.Data, deleteText):
+		b.deleteTextCallBack(cb)
 	case cb.Data == nextChunk:
 		b.nextChunk(cb)
 	case cb.Data == prevChunk:
@@ -94,6 +97,16 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 	replyMsg := tgbotapi.NewMessage(cb.From.ID, "Current text selected")
 	replyMsg.ReplyMarkup = markup
 	b.send(replyMsg)
+}
+
+func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
+	textName := strings.TrimPrefix(cb.Data, deleteText)
+	err := b.s.DeleteText(cb.From.ID, textName)
+	if err != nil {
+		b.replyError(cb.Message, "Failed to delete text", err)
+		return
+	}
+	b.replyWithText(cb.Message, "Text deleted")
 }
 
 func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
@@ -177,6 +190,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.chunk(msg)
 	case "delete":
 		b.delete(msg)
+	default:
+		b.saveTextFromMessage(msg)
 	}
 }
 
@@ -268,6 +283,29 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 		return
 	}
 	b.replyWithText(msg, "Successfully saved text")
+}
+
+func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
+	// first line is text name
+	textName, _, ok := strings.Cut(msg.Text, "\n")
+	if !ok {
+		b.replyWithText(msg, "Text name not found (first line should be text name)")
+		return
+	}
+	err := b.s.AddText(msg.From.ID, textName, msg.Text)
+	if err != nil {
+		b.replyError(msg, "Faled to save text", err)
+		return
+	}
+	markup := tgbotapi.NewInlineKeyboardMarkup(
+		[]tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData("Delete", fmt.Sprintf("%s%s", deleteText, textName)),
+		},
+	)
+	replyMsg := tgbotapi.NewMessage(msg.From.ID, "This text is saved. If you want to delete it, press button below")
+	replyMsg.ReplyMarkup = markup
+	replyMsg.ReplyToMessageID = msg.MessageID
+	b.send(replyMsg)
 }
 
 func (b *Bot) replyWithText(to *tgbotapi.Message, text string) {
