@@ -63,7 +63,7 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 	case strings.HasPrefix(cb.Data, deleteText):
 		b.deleteTextCallBack(cb)
 	case cb.Data == nextChunk:
-		b.nextChunkCallback(cb)
+		b.nextChunk(cb)
 	case cb.Data == prevChunk:
 		b.prevChunk(cb)
 	}
@@ -88,7 +88,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 		msg = fmt.Sprintf("Current selected text is: <code>%s</code>", currentText.Name)
 	}
 	b.replyWithText(cb.Message, msg)
-	b.nextChunkMessage(cb.Message)
+	b.nextChunk(cb)
 }
 
 func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
@@ -101,29 +101,25 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 	b.replyWithText(cb.Message, "Text deleted")
 }
 
-func (b *Bot) nextChunkCallback(cb *tgbotapi.CallbackQuery) {
-	b.nextChunkMessage(cb.Message)
-}
-
-func (b *Bot) nextChunkMessage(msg *tgbotapi.Message) {
+func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
 	prev := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
 	next := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
-	text, err := b.s.NextChunk(msg.From.ID)
+	text, err := b.s.NextChunk(cb.From.ID)
 	if err != nil {
 		if err == service.ErrTextFinished {
 			buttons := []tgbotapi.InlineKeyboardButton{prev}
-			currentText, err := b.s.CurrentText(msg.From.ID)
+			currentText, err := b.s.CurrentText(cb.From.ID)
 			if err == nil {
 				buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Delete text", deleteText+currentText.UUID))
 			}
-			b.replyWithText(msg, fmt.Sprintf("Text <code>%s</code> is finished", currentText.Name), buttons...)
+			b.replyWithText(cb.Message, fmt.Sprintf("Text <code>%s</code> is finished", currentText.Name), buttons...)
 			return
 		}
-		b.replyError(msg, "Failed to get next chunk", err)
+		b.replyError(cb.Message, "Failed to get next chunk", err)
 		return
 	}
 	// reply chunk text with next/prev buttons
-	b.replyWithText(msg, text, prev, next)
+	b.replyWithText(cb.Message, text, prev, next)
 }
 
 func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
