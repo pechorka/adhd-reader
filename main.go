@@ -56,7 +56,7 @@ func run() error {
 	}
 	defer storage.Close()
 
-	service := service.NewService(storage)
+	service := service.NewService(storage, 500)
 
 	b, err := bot.NewBot(service, cfg.TgToken)
 	if err != nil {
