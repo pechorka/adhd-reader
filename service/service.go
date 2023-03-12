@@ -37,7 +37,7 @@ func (s *Service) AddText(userID int64, textName, text string) error {
 		return errors.New("text name is empty")
 	}
 	if len(textName) > 255 {
-		return errors.New("text name is too long, max length is 255 (less if you use emojis/non-ascii symbols)")
+		return errors.Errorf("text name %s is too long, max length is 255 (less if you use emojis/non-ascii symbols)", textName)
 	}
 	chunkSize, err := s.s.GetChunkSize(userID)
 	if err != nil {
@@ -68,14 +68,17 @@ func (s *Service) ListTexts(userID int64) ([]string, error) {
 	return names, nil
 }
 
-func (s *Service) SelectText(userID int64, current int) error {
-	return s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
+func (s *Service) SelectText(userID int64, current int) (string, error) {
+	var textName string
+	err := s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
 		if current >= len(texts.Texts) || current < 0 {
 			return errors.Errorf("invalid text index, should be between 0 and %d", len(texts.Texts)-1)
 		}
 		texts.Current = current
+		textName = texts.Texts[current].Name
 		return nil
 	})
+	return textName, err
 }
 
 func (s *Service) SetPage(userID, page int64) error {

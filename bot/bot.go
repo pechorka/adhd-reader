@@ -82,7 +82,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 		b.replyError(cb.Message, "Failed to select text", err)
 		return
 	}
-	err = b.s.SelectText(cb.From.ID, textIndexInt)
+	textName, err := b.s.SelectText(cb.From.ID, textIndexInt)
 	if err != nil {
 		b.replyError(cb.Message, "Failed to select text", err)
 		return
@@ -94,7 +94,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 			tgbotapi.NewInlineKeyboardButtonData("Start reading", nextChunk),
 		},
 	)
-	replyMsg := tgbotapi.NewMessage(cb.From.ID, "Current text selected")
+	replyMsg := tgbotapi.NewMessage(cb.From.ID, "Current selected text is: "+textName)
 	replyMsg.ReplyMarkup = markup
 	b.send(replyMsg)
 }
