@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/aakrasnova/zone-mate/storage"
@@ -142,13 +143,30 @@ func TestService_SetPage(t *testing.T) {
 	}
 }
 
+func TestService_SetChunkSize(t *testing.T) {
+	store := testStorage(t)
+	srv := NewService(store, 5)
+	userID := rand.Int63()
+
+	err := srv.SetChunkSize(userID, -1)
+	require.Error(t, err)
+	err = srv.SetChunkSize(userID, telegramMessageLengthLimit+1)
+	require.Error(t, err)
+
+	err = srv.SetChunkSize(userID, 5)
+	require.NoError(t, err)
+}
+
 func testStorage(t *testing.T) *storage.Storage {
 	t.Helper()
-	storage, err := storage.NewStorage(fmt.Sprintf("/tmp/zone-mate-test-%d.db", rand.Int63()))
+	dbPath := fmt.Sprintf("/tmp/zone-mate-test-%d.db", rand.Int63())
+	storage, err := storage.NewStorage(dbPath)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		closeErr := storage.Close()
 		assert.NoError(t, closeErr)
+		removeErr := os.Remove(dbPath)
+		assert.NoError(t, removeErr)
 	})
 
 	return storage
