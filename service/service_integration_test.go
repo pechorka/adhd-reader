@@ -86,6 +86,36 @@ func TestService_PageNavigation(t *testing.T) {
 	require.Equal(t, ErrFirstChunk, err)
 }
 
+func TestService_SetPage(t *testing.T) {
+	srv := NewService(testStorage(t), 5)
+	userID := rand.Int63()
+	err := srv.AddText(
+		userID, "textName",
+		`First chunk.Second chunk.
+		Third chunk.Fourth chunk.`,
+	)
+	require.NoError(t, err)
+
+	// no text selected
+	err = srv.SetPage(userID, 0)
+	require.Error(t, err)
+
+	err = srv.SelectText(userID, 0)
+	require.NoError(t, err)
+
+	// page out of range
+	err = srv.SetPage(userID, -1)
+	require.Error(t, err)
+	err = srv.SetPage(userID, 4)
+	require.Error(t, err)
+
+	// page in range
+	for i := 0; i < 4; i++ {
+		err = srv.SetPage(userID, int64(i))
+		require.NoError(t, err)
+	}
+}
+
 func testStorage(t *testing.T) *storage.Storage {
 	t.Helper()
 	storage, err := storage.NewStorage(fmt.Sprintf("/tmp/zone-mate-test-%d.db", rand.Int63()))
