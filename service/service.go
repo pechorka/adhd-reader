@@ -2,6 +2,7 @@ package service
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/aakrasnova/zone-mate/storage"
 	"github.com/pkg/errors"
@@ -137,10 +138,7 @@ func splitText(text string, chunkSize int) []string {
 			end = len(text) - 1
 		}
 		// todo: handle telegram message length limit
-		// todo: handle multiple punctuation marks, like:
-		// 1. Hello, world!!!!
-		// 2. Hello, world!?
-		// 3. I.e.
+
 		// backtracking to the nearest space to check if we are in the middle of the link
 		var j int
 		for j = end; j > i && text[j] != ' '; j-- {
@@ -158,6 +156,19 @@ func splitText(text string, chunkSize int) []string {
 			if endOfTheSentence(text[end]) {
 				for end < len(text) && endOfTheSentence(text[end]) { // skip multiple punctuation marks
 					end++
+				}
+				// skip i.e or т.д.
+				if end+1 < len(text) {
+					_, runeSize := utf8.DecodeRuneInString(text[end:])
+					if endOfTheSentence(text[end+runeSize]) {
+						end += runeSize + 1 // +1 for the end of the sentence mark
+						// at this point we could be in the middle of the sentence
+						// or at the end of the sentence. We can't distinguish these cases.
+						// It's ok to continue in either case, because
+						// 1) if we are in the middle of the sentence, we need to find the end of the sentence
+						// 2) if we are at the end of the sentence, it's ok to include another sentence in the chunk
+						continue
+					}
 				}
 				break
 			}

@@ -52,6 +52,15 @@ func Test_splitText(t *testing.T) {
 				"Next sentence.",
 			},
 		},
+		{
+			name: "handle i.e. and т.д.",
+			text: "In this sentence i.e. in the middle of the sentence. Next sentence also has at the end т.д. Next sentence.",
+			size: 3,
+			want: []string{
+				"In this sentence i.e. in the middle of the sentence.",
+				"Next sentence also has at the end т.д. Next sentence.",
+			},
+		},
 	}
 
 	for _, tt := range tests {
