@@ -94,8 +94,9 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 			tgbotapi.NewInlineKeyboardButtonData("Start reading", nextChunk),
 		},
 	)
-	replyMsg := tgbotapi.NewMessage(cb.From.ID, "Current selected text is: "+textName)
+	replyMsg := tgbotapi.NewMessage(cb.From.ID, fmt.Sprintf("Current selected text is: <code>%s</code>", textName))
 	replyMsg.ReplyMarkup = markup
+	replyMsg.ParseMode = tgbotapi.ModeHTML
 	b.send(replyMsg)
 }
 
