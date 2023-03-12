@@ -68,6 +68,17 @@ func (s *Service) ListTexts(userID int64) ([]string, error) {
 	return names, nil
 }
 
+func (s *Service) CurrentTextName(userID int64) (string, error) {
+	texts, err := s.s.GetTexts(userID)
+	if err != nil {
+		return "", err
+	}
+	if texts.Current == storage.NotSelected {
+		return "", ErrTextNotSelected
+	}
+	return texts.Texts[texts.Current].Name, nil
+}
+
 func (s *Service) SelectText(userID int64, current int) (string, error) {
 	var textName string
 	err := s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {

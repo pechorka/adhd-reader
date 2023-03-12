@@ -114,13 +114,18 @@ func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
 	text, err := b.s.NextChunk(cb.From.ID)
 	if err != nil {
 		if err == service.ErrTextFinished {
-			markup := tgbotapi.NewInlineKeyboardMarkup(
-				[]tgbotapi.InlineKeyboardButton{
-					tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk),
-				},
-			)
-			replyMsg := tgbotapi.NewMessage(cb.From.ID, "Text finished")
+			buttons := []tgbotapi.InlineKeyboardButton{
+				tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk),
+			}
+
+			currentTextName, err := b.s.CurrentTextName(cb.From.ID)
+			if err == nil {
+				buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Delete text", deleteText+currentTextName))
+			}
+			markup := tgbotapi.NewInlineKeyboardMarkup(buttons)
+			replyMsg := tgbotapi.NewMessage(cb.From.ID, fmt.Sprintf("Text <code>%s</code> is finished", currentTextName))
 			replyMsg.ReplyMarkup = markup
+			replyMsg.ParseMode = tgbotapi.ModeHTML
 			b.send(replyMsg)
 			return
 		}
