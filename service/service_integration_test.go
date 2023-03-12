@@ -38,14 +38,15 @@ func TestService_SelectText(t *testing.T) {
 	err = srv.AddText(userID, "text3Name", "text3")
 	require.NoError(t, err)
 
-	err = srv.SelectText(userID, -1)
+	_, err = srv.SelectText(userID, -1)
 	require.Error(t, err)
-	err = srv.SelectText(userID, 3)
+	_, err = srv.SelectText(userID, 3)
 	require.Error(t, err)
 
 	for i := 0; i < 3; i++ {
-		err = srv.SelectText(userID, i)
+		textName, err := srv.SelectText(userID, i)
 		require.NoError(t, err)
+		require.Equal(t, fmt.Sprintf("text%dName", i+1), textName)
 		texts, err := srv.s.GetTexts(userID)
 		require.NoError(t, err)
 		require.Equal(t, i, texts.Current)
@@ -87,7 +88,7 @@ func TestService_PageNavigation(t *testing.T) {
 		Third chunk.Fourth chunk.`,
 	)
 	require.NoError(t, err)
-	err = srv.SelectText(userID, 0)
+	_, err = srv.SelectText(userID, 0)
 	require.NoError(t, err)
 
 	chunks := []string{
@@ -127,7 +128,7 @@ func TestService_SetPage(t *testing.T) {
 	err = srv.SetPage(userID, 0)
 	require.Error(t, err)
 
-	err = srv.SelectText(userID, 0)
+	_, err = srv.SelectText(userID, 0)
 	require.NoError(t, err)
 
 	// page out of range
