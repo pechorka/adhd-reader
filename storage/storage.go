@@ -43,10 +43,34 @@ func (s *Storage) Close() error {
 	return s.db.Close()
 }
 
-func (s *Storage) AddText(userID int64, newText NewText) error {
-	return s.db.Update(func(tx *bolt.Tx) error {
-		// fill the text bucket
+func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
+	textUUID := uuid.New().String()
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		// update user bucket
+		b, err := tx.CreateBucketIfNotExists(bktUserInfo)
+		if err != nil {
+			return err
+		}
+		id := textsId(userID)
+		texts, err := getTexts(b, id)
+		if err != nil {
+			return err
+		}
+		for _, text := range texts.Texts {
+			if text.Name == newText.Name {
+				return fmt.Errorf("text with name %q already exists", newText.Name)
+			}
+		}
 		textBucketName := []byte(uuid.New().String())
+		texts.Texts = append(texts.Texts, Text{
+			UUID:       textUUID,
+			Name:       newText.Name,
+			BucketName: textBucketName,
+		})
+		if err = putTexts(b, id, texts); err != nil {
+			return err
+		}
+		// fill the text bucket
 		textBucket, err := tx.CreateBucketIfNotExists(textBucketName)
 		if err != nil {
 			return err
@@ -65,25 +89,9 @@ func (s *Storage) AddText(userID int64, newText NewText) error {
 				return err
 			}
 		}
-		// update user bucket
-		b, err := tx.CreateBucketIfNotExists(bktUserInfo)
-		if err != nil {
-			return err
-		}
-		id := textsId(userID)
-		texts, err := getTexts(b, id)
-		if err != nil {
-			return err
-		}
-		texts.Texts = append(texts.Texts, Text{
-			Name:       newText.Name,
-			BucketName: textBucketName,
-		})
-		if err = putTexts(b, id, texts); err != nil {
-			return err
-		}
 		return nil
 	})
+	return textUUID, err
 }
 
 func (s *Storage) GetTexts(id int64) (UserTexts, error) {
@@ -178,7 +186,19 @@ func (s *Storage) SetChunkSize(userID int64, chunkSize int64) error {
 	})
 }
 
-func (s *Storage) DeleteText(userID int64, textName string) error {
+func (s *Storage) DeleteTextByUUID(userID int64, textUUID string) error {
+	return s.deleteTextBy(userID, func(text Text) bool {
+		return text.UUID == textUUID
+	})
+}
+
+func (s *Storage) DeleteTextByName(userID int64, textName string) error {
+	return s.deleteTextBy(userID, func(text Text) bool {
+		return text.Name == textName
+	})
+}
+
+func (s *Storage) deleteTextBy(userID int64, predicate func(Text) bool) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bktUserInfo)
 		if b == nil {
@@ -191,7 +211,7 @@ func (s *Storage) DeleteText(userID int64, textName string) error {
 		}
 		var found bool
 		for i, text := range texts.Texts {
-			if text.Name == textName {
+			if predicate(text) {
 				if err = tx.DeleteBucket(text.BucketName); err != nil {
 					return err
 				}

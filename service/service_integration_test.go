@@ -15,80 +15,114 @@ func TestService_ListTexts(t *testing.T) {
 	srv := NewService(testStorage(t), 100)
 	userID := rand.Int63()
 
-	err := srv.AddText(userID, "text1Name", "text1")
+	text1ID, err := srv.AddText(userID, "text1Name", "text1")
 	require.NoError(t, err)
-	err = srv.AddText(userID, "text2Name", "text2")
+	text2ID, err := srv.AddText(userID, "text2Name", "text2")
 	require.NoError(t, err)
-	err = srv.AddText(userID, "text3Name", "text3")
+	text3ID, err := srv.AddText(userID, "text3Name", "text3")
 	require.NoError(t, err)
 
 	texts, err := srv.ListTexts(userID)
 	require.NoError(t, err)
-	require.Equal(t, []string{"text1Name", "text2Name", "text3Name"}, texts)
+	require.Equal(t, text1ID, texts[0].UUID)
+	require.Equal(t, text2ID, texts[1].UUID)
+	require.Equal(t, text3ID, texts[2].UUID)
 }
 
 func TestService_SelectText(t *testing.T) {
 	srv := NewService(testStorage(t), 100)
 	userID := rand.Int63()
 
-	err := srv.AddText(userID, "text1Name", "text1")
+	text1ID, err := srv.AddText(userID, "text1Name", "text1")
 	require.NoError(t, err)
-	err = srv.AddText(userID, "text2Name", "text2")
+	text2ID, err := srv.AddText(userID, "text2Name", "text2")
 	require.NoError(t, err)
-	err = srv.AddText(userID, "text3Name", "text3")
+	text3ID, err := srv.AddText(userID, "text3Name", "text3")
 	require.NoError(t, err)
 
-	_, err = srv.SelectText(userID, -1)
-	require.Error(t, err)
-	_, err = srv.SelectText(userID, 3)
+	err = srv.SelectText(userID, "wrong uuid")
 	require.Error(t, err)
 
-	for i := 0; i < 3; i++ {
-		textName, err := srv.SelectText(userID, i)
-		require.NoError(t, err)
-		require.Equal(t, fmt.Sprintf("text%dName", i+1), textName)
-		texts, err := srv.s.GetTexts(userID)
-		require.NoError(t, err)
-		require.Equal(t, i, texts.Current)
-	}
+	err = srv.SelectText(userID, text1ID)
+	require.NoError(t, err)
+	err = srv.SelectText(userID, text2ID)
+	require.NoError(t, err)
+	err = srv.SelectText(userID, text3ID)
+	require.NoError(t, err)
 }
 
-func TestService_DeleteText(t *testing.T) {
+func TestService_DeleteTextByUUID(t *testing.T) {
 	srv := NewService(testStorage(t), 100)
 	userID := rand.Int63()
 
-	err := srv.AddText(userID, "text1Name", "text1")
+	text1ID, err := srv.AddText(userID, "text1Name", "text1")
 	require.NoError(t, err)
-	err = srv.AddText(userID, "text2Name", "text2")
+	text2ID, err := srv.AddText(userID, "text2Name", "text2")
 	require.NoError(t, err)
-	err = srv.AddText(userID, "text3Name", "text3")
+	text3ID, err := srv.AddText(userID, "text3Name", "text3")
 	require.NoError(t, err)
 
 	texts, err := srv.ListTexts(userID)
 	require.NoError(t, err)
-	require.Equal(t, []string{"text1Name", "text2Name", "text3Name"}, texts)
+	require.Len(t, texts, 3)
+	require.Equal(t, text1ID, texts[0].UUID)
+	require.Equal(t, text2ID, texts[1].UUID)
+	require.Equal(t, text3ID, texts[2].UUID)
 
-	err = srv.DeleteText(userID, "nonexistent")
+	err = srv.DeleteTextByUUID(userID, "nonexistent")
 	require.Error(t, err)
 
-	err = srv.DeleteText(userID, "text2Name")
+	err = srv.DeleteTextByUUID(userID, text2ID)
 	require.NoError(t, err)
 
 	texts, err = srv.ListTexts(userID)
 	require.NoError(t, err)
-	require.Equal(t, []string{"text1Name", "text3Name"}, texts)
+	require.Len(t, texts, 2)
+	require.Equal(t, text1ID, texts[0].UUID)
+	require.Equal(t, text3ID, texts[1].UUID)
+}
+
+func TestService_DeleteTextByName(t *testing.T) {
+	srv := NewService(testStorage(t), 100)
+	userID := rand.Int63()
+
+	_, err := srv.AddText(userID, "text1Name", "text1")
+	require.NoError(t, err)
+	_, err = srv.AddText(userID, "text2Name", "text2")
+	require.NoError(t, err)
+	_, err = srv.AddText(userID, "text3Name", "text3")
+	require.NoError(t, err)
+
+	texts, err := srv.ListTexts(userID)
+	require.NoError(t, err)
+	require.Len(t, texts, 3)
+	require.Equal(t, "text1Name", texts[0].Name)
+	require.Equal(t, "text2Name", texts[1].Name)
+	require.Equal(t, "text3Name", texts[2].Name)
+
+	err = srv.DeleteTextByName(userID, "nonexistent")
+	require.Error(t, err)
+
+	err = srv.DeleteTextByName(userID, "text2Name")
+	require.NoError(t, err)
+
+	texts, err = srv.ListTexts(userID)
+	require.NoError(t, err)
+	require.Len(t, texts, 2)
+	require.Equal(t, "text1Name", texts[0].Name)
+	require.Equal(t, "text3Name", texts[1].Name)
 }
 
 func TestService_PageNavigation(t *testing.T) {
 	srv := NewService(testStorage(t), 5)
 	userID := rand.Int63()
-	err := srv.AddText(
+	textID, err := srv.AddText(
 		userID, "textName",
 		`First chunk.Second chunk.
 		Third chunk.Fourth chunk.`,
 	)
 	require.NoError(t, err)
-	_, err = srv.SelectText(userID, 0)
+	err = srv.SelectText(userID, textID)
 	require.NoError(t, err)
 
 	chunks := []string{
@@ -117,7 +151,7 @@ func TestService_PageNavigation(t *testing.T) {
 func TestService_SetPage(t *testing.T) {
 	srv := NewService(testStorage(t), 5)
 	userID := rand.Int63()
-	err := srv.AddText(
+	textID, err := srv.AddText(
 		userID, "textName",
 		`First chunk.Second chunk.
 		Third chunk.Fourth chunk.`,
@@ -128,7 +162,7 @@ func TestService_SetPage(t *testing.T) {
 	err = srv.SetPage(userID, 0)
 	require.Error(t, err)
 
-	_, err = srv.SelectText(userID, 0)
+	err = srv.SelectText(userID, textID)
 	require.NoError(t, err)
 
 	// page out of range

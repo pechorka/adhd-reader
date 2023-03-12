@@ -6,6 +6,7 @@ type UserTexts struct {
 }
 
 type Text struct {
+	UUID       string
 	Name       string
 	BucketName []byte
 }

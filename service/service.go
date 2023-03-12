@@ -32,16 +32,16 @@ func (s *Service) SetChunkSize(userID int64, chunkSize int64) error {
 	return s.s.SetChunkSize(userID, chunkSize)
 }
 
-func (s *Service) AddText(userID int64, textName, text string) error {
+func (s *Service) AddText(userID int64, textName, text string) (string, error) {
 	if textName == "" {
-		return errors.New("text name is empty")
+		return "", errors.New("text name is empty")
 	}
 	if len(textName) > 255 {
-		return errors.Errorf("text name %s is too long, max length is 255 (less if you use emojis/non-ascii symbols)", textName)
+		return "", errors.Errorf("text name %s is too long, max length is 255 (less if you use emojis/non-ascii symbols)", textName)
 	}
 	chunkSize, err := s.s.GetChunkSize(userID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if chunkSize == 0 {
 		chunkSize = s.chunkSize
@@ -56,40 +56,35 @@ func (s *Service) AddText(userID int64, textName, text string) error {
 	return s.s.AddText(userID, data)
 }
 
-func (s *Service) ListTexts(userID int64) ([]string, error) {
+func (s *Service) ListTexts(userID int64) ([]storage.Text, error) {
 	texts, err := s.s.GetTexts(userID)
 	if err != nil {
 		return nil, err
 	}
-	var names []string
-	for _, t := range texts.Texts {
-		names = append(names, t.Name)
-	}
-	return names, nil
+	return texts.Texts, nil
 }
 
-func (s *Service) CurrentTextName(userID int64) (string, error) {
+func (s *Service) CurrentText(userID int64) (storage.Text, error) {
 	texts, err := s.s.GetTexts(userID)
 	if err != nil {
-		return "", err
+		return storage.Text{}, err
 	}
 	if texts.Current == storage.NotSelected {
-		return "", ErrTextNotSelected
+		return storage.Text{}, ErrTextNotSelected
 	}
-	return texts.Texts[texts.Current].Name, nil
+	return texts.Texts[texts.Current], nil
 }
 
-func (s *Service) SelectText(userID int64, current int) (string, error) {
-	var textName string
-	err := s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
-		if current >= len(texts.Texts) || current < 0 {
-			return errors.Errorf("invalid text index, should be between 0 and %d", len(texts.Texts)-1)
+func (s *Service) SelectText(userID int64, textUUID string) error {
+	return s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
+		for i, t := range texts.Texts {
+			if t.UUID == textUUID {
+				texts.Current = i
+				return nil
+			}
 		}
-		texts.Current = current
-		textName = texts.Texts[current].Name
-		return nil
+		return errors.Errorf("text with uuid %s not found", textUUID)
 	})
-	return textName, err
 }
 
 func (s *Service) SetPage(userID, page int64) error {
@@ -120,8 +115,12 @@ func (s *Service) PrevChunk(userID int64) (string, error) {
 	})
 }
 
-func (s *Service) DeleteText(userID int64, textName string) error {
-	return s.s.DeleteText(userID, textName)
+func (s *Service) DeleteTextByUUID(userID int64, textUUID string) error {
+	return s.s.DeleteTextByUUID(userID, textUUID)
+}
+
+func (s *Service) DeleteTextByName(userID int64, textUUID string) error {
+	return s.s.DeleteTextByName(userID, textUUID)
 }
 
 func splitText(text string, chunkSize int) []string {

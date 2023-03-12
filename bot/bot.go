@@ -13,9 +13,9 @@ import (
 
 const (
 	textSelect = "text-select:"
+	deleteText = "delete-text:"
 	nextChunk  = "next-chunk"
 	prevChunk  = "prev-chunk"
-	deleteText = "delete-text:"
 )
 
 type Bot struct {
@@ -63,7 +63,7 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 	case strings.HasPrefix(cb.Data, deleteText):
 		b.deleteTextCallBack(cb)
 	case cb.Data == nextChunk:
-		b.nextChunk(cb)
+		b.nextChunkCallback(cb)
 	case cb.Data == prevChunk:
 		b.prevChunk(cb)
 	}
@@ -76,24 +76,24 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 }
 
 func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
-	textIndex := strings.TrimPrefix(cb.Data, textSelect)
-	textIndexInt, err := strconv.Atoi(textIndex)
+	textUUID := strings.TrimPrefix(cb.Data, textSelect)
+	err := b.s.SelectText(cb.From.ID, textUUID)
 	if err != nil {
 		b.replyError(cb.Message, "Failed to select text", err)
 		return
 	}
-	textName, err := b.s.SelectText(cb.From.ID, textIndexInt)
-	if err != nil {
-		b.replyError(cb.Message, "Failed to select text", err)
-		return
+	msg := "Text selected successfully"
+	currentText, err := b.s.CurrentText(cb.From.ID)
+	if err == nil {
+		msg = fmt.Sprintf("Current selected text is: <code>%s</code>", currentText.Name)
 	}
-	startReading := tgbotapi.NewInlineKeyboardButtonData("Start reading", nextChunk)
-	b.replyWithText(cb.Message, fmt.Sprintf("Current selected text is: <code>%s</code>", textName), startReading)
+	b.replyWithText(cb.Message, msg)
+	b.nextChunkMessage(cb.Message)
 }
 
 func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
-	textName := strings.TrimPrefix(cb.Data, deleteText)
-	err := b.s.DeleteText(cb.From.ID, textName)
+	textUUID := strings.TrimPrefix(cb.Data, deleteText)
+	err := b.s.DeleteTextByUUID(cb.From.ID, textUUID)
 	if err != nil {
 		b.replyError(cb.Message, "Failed to delete text", err)
 		return
@@ -101,25 +101,29 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 	b.replyWithText(cb.Message, "Text deleted")
 }
 
-func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
+func (b *Bot) nextChunkCallback(cb *tgbotapi.CallbackQuery) {
+	b.nextChunkMessage(cb.Message)
+}
+
+func (b *Bot) nextChunkMessage(msg *tgbotapi.Message) {
 	prev := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
 	next := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
-	text, err := b.s.NextChunk(cb.From.ID)
+	text, err := b.s.NextChunk(msg.From.ID)
 	if err != nil {
 		if err == service.ErrTextFinished {
 			buttons := []tgbotapi.InlineKeyboardButton{prev}
-			currentTextName, err := b.s.CurrentTextName(cb.From.ID)
+			currentText, err := b.s.CurrentText(msg.From.ID)
 			if err == nil {
-				buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Delete text", deleteText+currentTextName))
+				buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Delete text", deleteText+currentText.UUID))
 			}
-			b.replyWithText(cb.Message, fmt.Sprintf("Text <code>%s</code> is finished", currentTextName), buttons...)
+			b.replyWithText(msg, fmt.Sprintf("Text <code>%s</code> is finished", currentText.Name), buttons...)
 			return
 		}
-		b.replyError(cb.Message, "Failed to get next chunk", err)
+		b.replyError(msg, "Failed to get next chunk", err)
 		return
 	}
 	// reply chunk text with next/prev buttons
-	b.replyWithText(cb.Message, text, prev, next)
+	b.replyWithText(msg, text, prev, next)
 }
 
 func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
@@ -191,8 +195,8 @@ func (b *Bot) list(msg *tgbotapi.Message) {
 	}
 	// reply with button for each text and save text index in callback data
 	var buttons []tgbotapi.InlineKeyboardButton
-	for i, t := range texts {
-		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(t, fmt.Sprintf("%s%d", textSelect, i)))
+	for _, t := range texts {
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(t.Name, textSelect+t.UUID))
 	}
 	b.replyWithText(msg, "Select text to read", buttons...)
 }
@@ -233,7 +237,7 @@ func (b *Bot) chunk(msg *tgbotapi.Message) {
 
 func (b *Bot) delete(msg *tgbotapi.Message) {
 	textName := strings.TrimSpace(msg.CommandArguments())
-	err := b.s.DeleteText(msg.From.ID, textName)
+	err := b.s.DeleteTextByName(msg.From.ID, textName)
 	if err != nil {
 		b.replyError(msg, "Failed to delete text", err)
 		return
@@ -252,12 +256,14 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 		b.replyError(msg, "Failed to download text file", err)
 		return
 	}
-	err = b.s.AddText(msg.From.ID, msg.Document.FileName, text)
+	textID, err := b.s.AddText(msg.From.ID, msg.Document.FileName, text)
 	if err != nil {
 		b.replyError(msg, "Faled to save text", err)
 		return
 	}
-	b.replyWithText(msg, "Successfully saved text")
+	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
+	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
+	b.replyWithText(msg, "This text is saved", readBtn, deleteBtn)
 }
 
 func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
@@ -267,13 +273,14 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 		b.replyWithText(msg, "Text name not found (first line should be text name)")
 		return
 	}
-	err := b.s.AddText(msg.From.ID, textName, msg.Text)
+	textID, err := b.s.AddText(msg.From.ID, textName, msg.Text)
 	if err != nil {
 		b.replyError(msg, "Faled to save text", err)
 		return
 	}
-	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", fmt.Sprintf("%s%s", deleteText, textName))
-	b.replyWithText(msg, "This text is saved. If you want to delete it, press button below", deleteBtn)
+	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
+	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
+	b.replyWithText(msg, "This text is saved", readBtn, deleteBtn)
 }
 
 func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) {
