@@ -12,13 +12,6 @@ import (
 	"github.com/aakrasnova/zone-mate/storage"
 )
 
-// var zoneDirs = []string{
-// 	// Update path according to your OS
-// 	"/usr/share/zoneinfo/",
-// 	"/usr/share/lib/zoneinfo/",
-// 	"/usr/lib/locale/TZ/",
-// }
-
 type config struct {
 	TgToken string `json:"tg_token"`
 }
@@ -45,7 +38,11 @@ func main() {
 }
 
 func run() error {
-	cfg, err := readCfg("./cfg.json")
+	cfgPath := "./cfg.json"
+	if len(os.Args) > 1 {
+		cfgPath = os.Args[1]
+	}
+	cfg, err := readCfg(cfgPath)
 	if err != nil {
 		return err
 	}
@@ -72,24 +69,3 @@ func run() error {
 
 	return nil
 }
-
-// func ReadFile(zoneDir, path string) []string {
-// 	fileNames := []string{}
-// 	files, err := ioutil.ReadDir(filepath.Join(zoneDir, path))
-// 	if err != nil {
-// 		fmt.Println("failed to read dir", filepath.Join(zoneDir, path), "err: ", err)
-// 		return fileNames
-// 	}
-// 	for _, f := range files {
-// 		if f.Name() != strings.ToUpper(f.Name()[:1])+f.Name()[1:] {
-// 			continue
-// 		}
-// 		fullName := filepath.Join(path, f.Name())
-// 		if f.IsDir() {
-// 			fileNames = append(fileNames, ReadFile(zoneDir, fullName)...)
-// 		} else {
-// 			fileNames = append(fileNames, fullName)
-// 		}
-// 	}
-// 	return fileNames
-// }
