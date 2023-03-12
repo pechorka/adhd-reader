@@ -87,17 +87,8 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 		b.replyError(cb.Message, "Failed to select text", err)
 		return
 	}
-
-	// todo: helper for sending markup
-	markup := tgbotapi.NewInlineKeyboardMarkup(
-		[]tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("Start reading", nextChunk),
-		},
-	)
-	replyMsg := tgbotapi.NewMessage(cb.From.ID, fmt.Sprintf("Current selected text is: <code>%s</code>", textName))
-	replyMsg.ReplyMarkup = markup
-	replyMsg.ParseMode = tgbotapi.ModeHTML
-	b.send(replyMsg)
+	startReading := tgbotapi.NewInlineKeyboardButtonData("Start reading", nextChunk)
+	b.replyWithText(cb.Message, fmt.Sprintf("Current selected text is: <code>%s</code>", textName), startReading)
 }
 
 func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
@@ -111,66 +102,40 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 }
 
 func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
+	prev := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
+	next := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
 	text, err := b.s.NextChunk(cb.From.ID)
 	if err != nil {
 		if err == service.ErrTextFinished {
-			buttons := []tgbotapi.InlineKeyboardButton{
-				tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk),
-			}
-
+			buttons := []tgbotapi.InlineKeyboardButton{prev}
 			currentTextName, err := b.s.CurrentTextName(cb.From.ID)
 			if err == nil {
 				buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Delete text", deleteText+currentTextName))
 			}
-			markup := tgbotapi.NewInlineKeyboardMarkup(buttons)
-			replyMsg := tgbotapi.NewMessage(cb.From.ID, fmt.Sprintf("Text <code>%s</code> is finished", currentTextName))
-			replyMsg.ReplyMarkup = markup
-			replyMsg.ParseMode = tgbotapi.ModeHTML
-			b.send(replyMsg)
+			b.replyWithText(cb.Message, fmt.Sprintf("Text <code>%s</code> is finished", currentTextName), buttons...)
 			return
 		}
 		b.replyError(cb.Message, "Failed to get next chunk", err)
 		return
 	}
 	// reply chunk text with next/prev buttons
-	markup := tgbotapi.NewInlineKeyboardMarkup(
-		[]tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk),
-			tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk),
-		},
-	)
-	replyMsg := tgbotapi.NewMessage(cb.From.ID, text)
-	replyMsg.ReplyMarkup = markup
-	b.send(replyMsg)
+	b.replyWithText(cb.Message, text, prev, next)
 }
 
 func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
+	prev := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
+	next := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
 	text, err := b.s.PrevChunk(cb.From.ID)
 	if err != nil {
 		if err == service.ErrFirstChunk {
-			markup := tgbotapi.NewInlineKeyboardMarkup(
-				[]tgbotapi.InlineKeyboardButton{
-					tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk),
-				},
-			)
-			replyMsg := tgbotapi.NewMessage(cb.From.ID, "Can't go back, you are at the first chunk")
-			replyMsg.ReplyMarkup = markup
-			b.send(replyMsg)
+			b.replyWithText(cb.Message, "Can't go back, you are at the first chunk", next)
 			return
 		}
 		b.replyError(cb.Message, "Failed to get prev chunk", err)
 		return
 	}
 	// reply chunk text with next/prev buttons
-	markup := tgbotapi.NewInlineKeyboardMarkup(
-		[]tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk),
-			tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk),
-		},
-	)
-	replyMsg := tgbotapi.NewMessage(cb.From.ID, text)
-	replyMsg.ReplyMarkup = markup
-	b.send(replyMsg)
+	b.replyWithText(cb.Message, text, prev, next)
 }
 
 func (b *Bot) handleMsg(msg *tgbotapi.Message) {
@@ -229,12 +194,7 @@ func (b *Bot) list(msg *tgbotapi.Message) {
 	for i, t := range texts {
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(t, fmt.Sprintf("%s%d", textSelect, i)))
 	}
-	// todo: helper for sending markup
-	markup := tgbotapi.NewInlineKeyboardMarkup(buttons)
-	replyMsg := tgbotapi.NewMessage(msg.Chat.ID, "Select text")
-	replyMsg.ReplyMarkup = markup
-	replyMsg.ReplyToMessageID = msg.MessageID
-	b.send(replyMsg)
+	b.replyWithText(msg, "Select text to read", buttons...)
 }
 
 func (b *Bot) page(msg *tgbotapi.Message) {
@@ -312,34 +272,31 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 		b.replyError(msg, "Faled to save text", err)
 		return
 	}
-	markup := tgbotapi.NewInlineKeyboardMarkup(
-		[]tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("Delete", fmt.Sprintf("%s%s", deleteText, textName)),
-		},
-	)
-	replyMsg := tgbotapi.NewMessage(msg.From.ID, "This text is saved. If you want to delete it, press button below")
-	replyMsg.ReplyMarkup = markup
-	replyMsg.ReplyToMessageID = msg.MessageID
-	b.send(replyMsg)
+	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", fmt.Sprintf("%s%s", deleteText, textName))
+	b.replyWithText(msg, "This text is saved. If you want to delete it, press button below", deleteBtn)
 }
 
-func (b *Bot) replyWithText(to *tgbotapi.Message, text string) {
+func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) {
 	msg := tgbotapi.NewMessage(to.Chat.ID, text)
 	msg.ReplyToMessageID = to.MessageID
 	msg.ParseMode = tgbotapi.ModeHTML
-	b.send(msg)
+	b.send(msg, buttons...)
 }
 
-func (b *Bot) replyError(to *tgbotapi.Message, text string, err error) {
+func (b *Bot) replyError(to *tgbotapi.Message, text string, err error, buttons ...tgbotapi.InlineKeyboardButton) {
 	msg := tgbotapi.NewMessage(to.Chat.ID, text)
 	msg.ReplyToMessageID = to.MessageID
+	msg.ParseMode = tgbotapi.ModeHTML
 	if err != nil {
 		log.Println(err.Error())
 	}
-	b.send(msg)
+	b.send(msg, buttons...)
 }
 
-func (b *Bot) send(msg tgbotapi.MessageConfig) {
+func (b *Bot) send(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboardButton) {
+	if len(buttons) > 0 {
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(buttons)
+	}
 	_, err := b.bot.Send(msg)
 	if err != nil {
 		log.Println("error while sending message: ", err)
