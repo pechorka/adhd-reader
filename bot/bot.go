@@ -295,7 +295,13 @@ func (b *Bot) replyError(to *tgbotapi.Message, text string, err error, buttons .
 
 func (b *Bot) send(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboardButton) {
 	if len(buttons) > 0 {
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(buttons)
+		rowButtons := make([][]tgbotapi.InlineKeyboardButton, 0, len(buttons))
+		for _, btn := range buttons {
+			rowButtons = append(rowButtons, tgbotapi.NewInlineKeyboardRow(btn))
+		}
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			rowButtons...,
+		)
 	}
 	_, err := b.bot.Send(msg)
 	if err != nil {
