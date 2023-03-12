@@ -10,6 +10,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
+var ErrNotFound = errors.New("not found")
+
 const NotSelected = -1
 
 var (
@@ -173,6 +175,38 @@ func (s *Storage) SetChunkSize(userID int64, chunkSize int64) error {
 		}
 		id := chunkSizeId(userID)
 		return putChunkSize(b, id, chunkSize)
+	})
+}
+
+func (s *Storage) DeleteText(userID int64, textName string) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktUserInfo)
+		if b == nil {
+			return ErrNotFound
+		}
+		id := textsId(userID)
+		texts, err := getTexts(b, id)
+		if err != nil {
+			return err
+		}
+		var found bool
+		for i, text := range texts.Texts {
+			if text.Name == textName {
+				if err = tx.DeleteBucket(text.BucketName); err != nil {
+					return err
+				}
+				texts.Texts = append(texts.Texts[:i], texts.Texts[i+1:]...)
+				if texts.Current == i {
+					texts.Current = NotSelected
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			return ErrNotFound
+		}
+		return putTexts(b, id, texts)
 	})
 }
 

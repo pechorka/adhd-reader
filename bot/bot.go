@@ -175,6 +175,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.page(msg)
 	case "chunk":
 		b.chunk(msg)
+	case "delete":
+		b.delete(msg)
 	}
 }
 
@@ -237,6 +239,16 @@ func (b *Bot) chunk(msg *tgbotapi.Message) {
 		return
 	}
 	b.replyWithText(msg, "Chunk size set. But keep in mind that text gets chunked on save and currently they are not re-chunked on chunk size change")
+}
+
+func (b *Bot) delete(msg *tgbotapi.Message) {
+	textName := strings.TrimSpace(msg.CommandArguments())
+	err := b.s.DeleteText(msg.From.ID, textName)
+	if err != nil {
+		b.replyError(msg, "Failed to delete text", err)
+		return
+	}
+	b.replyWithText(msg, "Text deleted")
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {

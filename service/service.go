@@ -100,6 +100,10 @@ func (s *Service) PrevChunk(userID int64) (string, error) {
 	})
 }
 
+func (s *Service) DeleteText(userID int64, textName string) error {
+	return s.s.DeleteText(userID, textName)
+}
+
 func splitText(text string, chunkSize int) []string {
 	var chunks []string
 	for i := 0; i < len(text); {

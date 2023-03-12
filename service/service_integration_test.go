@@ -51,6 +51,32 @@ func TestService_SelectText(t *testing.T) {
 	}
 }
 
+func TestService_DeleteText(t *testing.T) {
+	srv := NewService(testStorage(t), 100)
+	userID := rand.Int63()
+
+	err := srv.AddText(userID, "text1Name", "text1")
+	require.NoError(t, err)
+	err = srv.AddText(userID, "text2Name", "text2")
+	require.NoError(t, err)
+	err = srv.AddText(userID, "text3Name", "text3")
+	require.NoError(t, err)
+
+	texts, err := srv.ListTexts(userID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"text1Name", "text2Name", "text3Name"}, texts)
+
+	err = srv.DeleteText(userID, "nonexistent")
+	require.Error(t, err)
+
+	err = srv.DeleteText(userID, "text2Name")
+	require.NoError(t, err)
+
+	texts, err = srv.ListTexts(userID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"text1Name", "text3Name"}, texts)
+}
+
 func TestService_PageNavigation(t *testing.T) {
 	srv := NewService(testStorage(t), 5)
 	userID := rand.Int63()
