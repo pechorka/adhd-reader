@@ -133,20 +133,34 @@ func splitText(text string, chunkSize int) []string {
 	var chunks []string
 	for i := 0; i < len(text); {
 		end := i + chunkSize
+		if end >= len(text) {
+			end = len(text) - 1
+		}
 		// todo: handle telegram message length limit
 		// todo: handle multiple punctuation marks, like:
 		// 1. Hello, world!!!!
 		// 2. Hello, world!?
 		// 3. I.e.
-		for end < len(text)-1 {
-			end++
-			if endOfTheSentence(text[end]) {
-				end++ // include space ender
-				break
+		// backtracking to the nearest space to check if we are in the middle of the link
+		var j int
+		for j = end; j > i && text[j] != ' '; j-- {
+		}
+		if (text[j] == ' ' || j == i) && strings.HasPrefix(text[j+1:], "http") {
+			// we are in the middle of the link, go until the end of the link
+			for ; end < len(text) && text[end] != ' '; end++ {
+			}
+			if end >= len(text) {
+				end = len(text) - 1
 			}
 		}
-		if end > len(text) {
-			end = len(text)
+		// go until the end of the sentence
+		for ; end < len(text); end++ {
+			if endOfTheSentence(text[end]) {
+				for end < len(text) && endOfTheSentence(text[end]) { // skip multiple punctuation marks
+					end++
+				}
+				break
+			}
 		}
 		chunks = append(chunks, strings.TrimSpace(text[i:end]))
 		i = end

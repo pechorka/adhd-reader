@@ -34,6 +34,24 @@ func Test_splitText(t *testing.T) {
 				"Разбиться в середине rune.",
 			},
 		},
+		{
+			name: "multiple punctuation marks",
+			text: "Sentence with a lot of punctuations?!? This text should be split into two chunks!!!!!",
+			size: 4,
+			want: []string{
+				"Sentence with a lot of punctuations?!?",
+				"This text should be split into two chunks!!!!!",
+			},
+		},
+		{
+			name: "skip until the end of the link",
+			text: "Some words https://www.google.com/search?q=hello+world continue with the text. Next sentence.",
+			size: 13,
+			want: []string{
+				"Some words https://www.google.com/search?q=hello+world continue with the text.",
+				"Next sentence.",
+			},
+		},
 	}
 
 	for _, tt := range tests {
