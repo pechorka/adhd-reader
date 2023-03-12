@@ -205,7 +205,7 @@ func (b *Bot) list(msg *tgbotapi.Message) {
 
 func (b *Bot) page(msg *tgbotapi.Message) {
 	strPage := msg.CommandArguments()
-	page, err := strconv.Atoi(strings.TrimSpace(strPage))
+	page, err := strconv.ParseInt(strings.TrimSpace(strPage), 10, 64)
 	if err != nil {
 		b.replyError(msg, "Failed to parse page", err)
 		return

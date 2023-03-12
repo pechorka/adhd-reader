@@ -1,10 +1,10 @@
 package service
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/aakrasnova/zone-mate/storage"
+	"github.com/pkg/errors"
 )
 
 var ErrTextFinished = errors.New("text finished")
@@ -22,33 +22,18 @@ func NewService(s *storage.Storage) *Service {
 
 func (s *Service) AddText(userID int64, textName, text string) error {
 	textChunks := splitText(text, s.chunkSize)
-	data := storage.Text{
-		Name:     textName,
-		Chunks:   textChunks,
-		LastRead: -1,
+	data := storage.NewText{
+		Name:   textName,
+		Chunks: textChunks,
+		Text:   text,
 	}
-	texts, err := s.s.GetTexts(userID)
-	if err != nil {
-		return err
-	}
-	if texts == nil {
-		texts = &storage.UserTexts{
-			Texts:   []storage.Text{data},
-			Current: -1,
-		}
-	} else {
-		texts.Texts = append(texts.Texts, data)
-	}
-	return s.s.PutText(userID, texts)
+	return s.s.AddText(userID, data)
 }
 
 func (s *Service) ListTexts(userID int64) ([]string, error) {
 	texts, err := s.s.GetTexts(userID)
 	if err != nil {
 		return nil, err
-	}
-	if texts == nil {
-		return nil, nil
 	}
 	var names []string
 	for _, t := range texts.Texts {
@@ -58,73 +43,41 @@ func (s *Service) ListTexts(userID int64) ([]string, error) {
 }
 
 func (s *Service) SelectText(userID int64, current int) error {
-	texts, err := s.s.GetTexts(userID)
-	if err != nil {
-		return err
-	}
-	if current >= len(texts.Texts) || current < 0 {
-		return errors.New("invalid text index")
-	}
-	texts.Current = current
-	return s.s.PutText(userID, texts)
+	return s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
+		if current >= len(texts.Texts) || current < 0 {
+			return errors.Errorf("invalid text index, should be between 0 and %d", len(texts.Texts)-1)
+		}
+		texts.Current = current
+		return nil
+	})
 }
 
-func (s *Service) SetPage(userID int64, page int) error {
-	texts, err := s.s.GetTexts(userID)
-	if err != nil {
-		return err
-	}
-	if texts == nil || texts.Current == -1 {
-		return ErrTextNotSelected
-	}
-	text := texts.Texts[texts.Current]
-	if page >= len(text.Chunks) || page < 0 {
-		return errors.New("invalid page index")
-	}
-	text.LastRead = page
-	texts.Texts[texts.Current] = text
-	return s.s.PutText(userID, texts)
+func (s *Service) SetPage(userID, page int64) error {
+	_, err := s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
+		if page >= totalChunks || page < 0 {
+			return 0, errors.Errorf("invalid page index, should be between 0 and %d", totalChunks-1)
+		}
+		return page, nil
+	})
+	return err
 }
 
 func (s *Service) NextChunk(userID int64) (string, error) {
-	texts, err := s.s.GetTexts(userID)
-	if err != nil {
-		return "", err
-	}
-	text := texts.Texts[texts.Current]
-	text.LastRead++
-	if text.LastRead >= len(text.Chunks) {
-		return "", ErrTextFinished
-	}
-	chunk := text.Chunks[text.LastRead]
-	texts.Texts[texts.Current] = text
-	err = s.s.PutText(userID, texts)
-	if err != nil {
-		return "", err
-	}
-	return chunk, nil
+	return s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
+		if curChunk >= totalChunks {
+			return 0, ErrTextFinished
+		}
+		return curChunk + 1, nil
+	})
 }
 
 func (s *Service) PrevChunk(userID int64) (string, error) {
-	texts, err := s.s.GetTexts(userID)
-	if err != nil {
-		return "", err
-	}
-	text := texts.Texts[texts.Current]
-	if text.LastRead <= -1 {
-		return "", ErrFirstChunk
-	}
-	text.LastRead--
-	texts.Texts[texts.Current] = text
-	err = s.s.PutText(userID, texts)
-	if err != nil {
-		return "", err
-	}
-	if text.LastRead < 0 {
-		return "", ErrFirstChunk
-	}
-	chunk := text.Chunks[text.LastRead]
-	return chunk, nil
+	return s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
+		if curChunk <= storage.NotSelected {
+			return 0, ErrFirstChunk
+		}
+		return curChunk - 1, nil
+	})
 }
 
 func splitText(text string, chunkSize int) []string {

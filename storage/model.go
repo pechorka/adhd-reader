@@ -6,7 +6,12 @@ type UserTexts struct {
 }
 
 type Text struct {
-	Name     string
-	Chunks   []string
-	LastRead int // index of last read chunk
+	Name       string
+	BucketName []byte
+}
+
+type NewText struct {
+	Name   string
+	Text   string
+	Chunks []string
 }
