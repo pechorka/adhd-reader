@@ -173,6 +173,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.list(msg)
 	case "page":
 		b.page(msg)
+	case "chunk":
+		b.chunk(msg)
 	}
 }
 
@@ -220,6 +222,21 @@ func (b *Bot) page(msg *tgbotapi.Message) {
 		return
 	}
 	b.replyWithText(msg, "Page set")
+}
+
+func (b *Bot) chunk(msg *tgbotapi.Message) {
+	strChunk := msg.CommandArguments()
+	chunk, err := strconv.ParseInt(strings.TrimSpace(strChunk), 10, 64)
+	if err != nil {
+		b.replyError(msg, "Failed to parse chunk", err)
+		return
+	}
+	err = b.s.SetChunkSize(msg.From.ID, chunk)
+	if err != nil {
+		b.replyError(msg, "Failed to set chunk size", err)
+		return
+	}
+	b.replyWithText(msg, "Chunk set")
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {

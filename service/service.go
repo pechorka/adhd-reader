@@ -13,19 +13,31 @@ var ErrTextNotSelected = errors.New("text is not selected")
 
 type Service struct {
 	s         *storage.Storage
-	chunkSize int
+	chunkSize int64
 }
 
-func NewService(s *storage.Storage, chunkSize int) *Service {
+func NewService(s *storage.Storage, chunkSize int64) *Service {
 	return &Service{s: s, chunkSize: chunkSize}
 }
 
+func (s *Service) SetChunkSize(userID int64, chunkSize int64) error {
+	return s.s.SetChunkSize(userID, chunkSize)
+}
+
 func (s *Service) AddText(userID int64, textName, text string) error {
-	textChunks := splitText(text, s.chunkSize)
+	chunkSize, err := s.s.GetChunkSize(userID)
+	if err != nil {
+		return err
+	}
+	if chunkSize == 0 {
+		chunkSize = s.chunkSize
+	}
+	textChunks := splitText(text, int(chunkSize))
 	data := storage.NewText{
-		Name:   textName,
-		Chunks: textChunks,
-		Text:   text,
+		Name:      textName,
+		Chunks:    textChunks,
+		Text:      text,
+		ChunkSize: chunkSize,
 	}
 	return s.s.AddText(userID, data)
 }

@@ -11,7 +11,8 @@ type Text struct {
 }
 
 type NewText struct {
-	Name   string
-	Text   string
-	Chunks []string
+	Name      string
+	Text      string
+	Chunks    []string
+	ChunkSize int64
 }

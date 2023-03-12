@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -12,7 +13,7 @@ import (
 const NotSelected = -1
 
 var (
-	bktTexts = []byte("texts")
+	bktUserInfo = []byte("user_info")
 )
 
 var (
@@ -63,11 +64,11 @@ func (s *Storage) AddText(userID int64, newText NewText) error {
 			}
 		}
 		// update user bucket
-		b, err := tx.CreateBucketIfNotExists(bktTexts)
+		b, err := tx.CreateBucketIfNotExists(bktUserInfo)
 		if err != nil {
 			return err
 		}
-		id := int64ToBytes(userID)
+		id := textsId(userID)
 		texts, err := getTexts(b, id)
 		if err != nil {
 			return err
@@ -86,12 +87,12 @@ func (s *Storage) AddText(userID int64, newText NewText) error {
 func (s *Storage) GetTexts(id int64) (UserTexts, error) {
 	var texts UserTexts
 	err := s.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(bktTexts)
+		b := tx.Bucket(bktUserInfo)
 		if b == nil {
 			return nil
 		}
 		var err error
-		texts, err = getTexts(b, int64ToBytes(id))
+		texts, err = getTexts(b, textsId(id))
 		return err
 	})
 	return texts, err
@@ -99,11 +100,11 @@ func (s *Storage) GetTexts(id int64) (UserTexts, error) {
 
 func (s *Storage) UpdateTexts(userID int64, updFunc func(*UserTexts) error) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists(bktTexts)
+		b, err := tx.CreateBucketIfNotExists(bktUserInfo)
 		if err != nil {
 			return err
 		}
-		id := int64ToBytes(userID)
+		id := textsId(userID)
 		texts, err := getTexts(b, id)
 		if err != nil {
 			return err
@@ -118,11 +119,11 @@ func (s *Storage) UpdateTexts(userID int64, updFunc func(*UserTexts) error) erro
 func (s *Storage) SelectChunk(userID int64, updFunc func(curChunk, totalChunks int64) (nextChunk int64, err error)) (string, error) {
 	var chunkText string
 	err := s.db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists(bktTexts)
+		b, err := tx.CreateBucketIfNotExists(bktUserInfo)
 		if err != nil {
 			return err
 		}
-		id := int64ToBytes(userID)
+		id := textsId(userID)
 		texts, err := getTexts(b, id)
 		if err != nil {
 			return err
@@ -150,6 +151,37 @@ func (s *Storage) SelectChunk(userID int64, updFunc func(curChunk, totalChunks i
 	return chunkText, err
 }
 
+func (s *Storage) GetChunkSize(userID int64) (int64, error) {
+	var chunkSize int64
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktUserInfo)
+		if b == nil {
+			return nil
+		}
+		id := chunkSizeId(userID)
+		chunkSize = getChunkSize(b, id)
+		return nil
+	})
+	return chunkSize, err
+}
+
+func (s *Storage) SetChunkSize(userID int64, chunkSize int64) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktUserInfo)
+		if err != nil {
+			return err
+		}
+		id := chunkSizeId(userID)
+		return putChunkSize(b, id, chunkSize)
+	})
+}
+
+// helper functions
+
+func textsId(id int64) []byte {
+	return []byte(fmt.Sprintf("texts-%d", id))
+}
+
 func getTexts(b *bolt.Bucket, id []byte) (texts UserTexts, err error) {
 	v := b.Get(id)
 	if v == nil {
@@ -168,6 +200,22 @@ func putTexts(b *bolt.Bucket, id []byte, texts UserTexts) error {
 		return err
 	}
 	return b.Put(id, encoded)
+}
+
+func chunkSizeId(id int64) []byte {
+	return []byte(fmt.Sprintf("chunk-size-%d", id))
+}
+
+func getChunkSize(b *bolt.Bucket, id []byte) (size int64) {
+	v := b.Get(id)
+	if v == nil {
+		return 0
+	}
+	return bytesToInt64(v)
+}
+
+func putChunkSize(b *bolt.Bucket, id []byte, size int64) error {
+	return b.Put(id, int64ToBytes(size))
 }
 
 func int64ToBytes(i int64) []byte {
