@@ -236,7 +236,7 @@ func (b *Bot) chunk(msg *tgbotapi.Message) {
 		b.replyError(msg, "Failed to set chunk size", err)
 		return
 	}
-	b.replyWithText(msg, "Chunk set")
+	b.replyWithText(msg, "Chunk size set. But keep in mind that text gets chunked on save and currently they are not re-chunked on chunk size change")
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {

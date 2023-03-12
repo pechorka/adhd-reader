@@ -11,6 +11,8 @@ var ErrTextFinished = errors.New("text finished")
 var ErrFirstChunk = errors.New("first chunk")
 var ErrTextNotSelected = errors.New("text is not selected")
 
+const telegramMessageLengthLimit = 4096
+
 type Service struct {
 	s         *storage.Storage
 	chunkSize int64
@@ -21,6 +23,12 @@ func NewService(s *storage.Storage, chunkSize int64) *Service {
 }
 
 func (s *Service) SetChunkSize(userID int64, chunkSize int64) error {
+	if chunkSize < 1 {
+		return errors.New("chunk size must be greater than 0")
+	}
+	if chunkSize > telegramMessageLengthLimit {
+		return errors.Errorf("chunk size is too big, telegram message length limit is %d", telegramMessageLengthLimit)
+	}
 	return s.s.SetChunkSize(userID, chunkSize)
 }
 
@@ -96,6 +104,11 @@ func splitText(text string, chunkSize int) []string {
 	var chunks []string
 	for i := 0; i < len(text); {
 		end := i + chunkSize
+		// todo: handle telegram message length limit
+		// todo: handle multiple punctuation marks, like:
+		// 1. Hello, world!!!!
+		// 2. Hello, world!?
+		// 3. I.e.
 		for end < len(text)-1 {
 			end++
 			if endOfTheSentence(text[end]) {
