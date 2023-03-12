@@ -16,8 +16,8 @@ type Service struct {
 	chunkSize int
 }
 
-func NewService(s *storage.Storage) *Service {
-	return &Service{s: s, chunkSize: 500}
+func NewService(s *storage.Storage, chunkSize int) *Service {
+	return &Service{s: s, chunkSize: chunkSize}
 }
 
 func (s *Service) AddText(userID int64, textName, text string) error {
