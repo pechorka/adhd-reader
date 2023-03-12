@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aakrasnova/zone-mate/loader"
+	"github.com/aakrasnova/zone-mate/pkg/fileloader"
 	"github.com/aakrasnova/zone-mate/service"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -228,7 +228,7 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 		b.replyError(msg, "Failed to build file url", err)
 		return
 	}
-	text, err := loader.DownloadTextFile(fileURL)
+	text, err := fileloader.DownloadTextFile(fileURL)
 	if err != nil {
 		b.replyError(msg, "Failed to download text file", err)
 		return

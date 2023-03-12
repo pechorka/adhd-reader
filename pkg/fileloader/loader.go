@@ -1,7 +1,7 @@
-package loader
+package fileloader
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -15,7 +15,7 @@ func DownloadTextFile(URL string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	content, err := ioutil.ReadAll(resp.Body)
+	content, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read text file")
 	}

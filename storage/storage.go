@@ -144,9 +144,6 @@ func (s *Storage) SelectChunk(userID int64, updFunc func(curChunk, totalChunks i
 		if err != nil {
 			return err
 		}
-		if nextChunk == NotSelected {
-			return nil
-		}
 		chunkText = string(textBucket.Get(int64ToBytes(nextChunk)))
 		return nil
 	})

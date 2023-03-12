@@ -64,7 +64,7 @@ func (s *Service) SetPage(userID, page int64) error {
 
 func (s *Service) NextChunk(userID int64) (string, error) {
 	return s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
-		if curChunk >= totalChunks {
+		if curChunk >= totalChunks-1 {
 			return 0, ErrTextFinished
 		}
 		return curChunk + 1, nil
@@ -73,7 +73,7 @@ func (s *Service) NextChunk(userID int64) (string, error) {
 
 func (s *Service) PrevChunk(userID int64) (string, error) {
 	return s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
-		if curChunk <= storage.NotSelected {
+		if curChunk <= 0 {
 			return 0, ErrFirstChunk
 		}
 		return curChunk - 1, nil

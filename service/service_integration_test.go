@@ -51,6 +51,41 @@ func TestService_SelectText(t *testing.T) {
 	}
 }
 
+func TestService_PageNavigation(t *testing.T) {
+	srv := NewService(testStorage(t), 5)
+	userID := rand.Int63()
+	err := srv.AddText(
+		userID, "textName",
+		`First chunk.Second chunk.
+		Third chunk.Fourth chunk.`,
+	)
+	require.NoError(t, err)
+	err = srv.SelectText(userID, 0)
+	require.NoError(t, err)
+
+	chunks := []string{
+		"First chunk.", "Second chunk.", "Third chunk.", "Fourth chunk.",
+	}
+
+	for i := 0; i < len(chunks); i++ {
+		chunkText, err := srv.NextChunk(userID)
+		require.NoError(t, err)
+		require.Equal(t, chunks[i], chunkText)
+	}
+	_, err = srv.NextChunk(userID)
+	require.Equal(t, ErrTextFinished, err)
+
+	// -2, because we are currently on the last chunk.
+	// So prev chunk should the 3rd one.
+	for i := len(chunks) - 2; i >= 0; i-- {
+		chunkText, err := srv.PrevChunk(userID)
+		require.NoError(t, err)
+		require.Equal(t, chunks[i], chunkText)
+	}
+	_, err = srv.PrevChunk(userID)
+	require.Equal(t, ErrFirstChunk, err)
+}
+
 func testStorage(t *testing.T) *storage.Storage {
 	t.Helper()
 	storage, err := storage.NewStorage(fmt.Sprintf("/tmp/zone-mate-test-%d.db", rand.Int63()))
