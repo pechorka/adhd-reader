@@ -115,6 +115,12 @@ func (s *Service) PrevChunk(userID int64) (string, error) {
 	})
 }
 
+func (s *Service) CurrentChunk(userID int64) (string, error) {
+	return s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
+		return curChunk, nil
+	})
+}
+
 func (s *Service) DeleteTextByUUID(userID int64, textUUID string) error {
 	return s.s.DeleteTextByUUID(userID, textUUID)
 }

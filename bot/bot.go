@@ -88,7 +88,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 		msg = fmt.Sprintf("Current selected text is: <code>%s</code>", currentText.Name)
 	}
 	b.replyWithText(cb.Message, msg)
-	b.nextChunk(cb)
+	b.currentChunk(cb)
 }
 
 func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
@@ -132,6 +132,18 @@ func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
 			return
 		}
 		b.replyError(cb.Message, "Failed to get prev chunk", err)
+		return
+	}
+	// reply chunk text with next/prev buttons
+	b.replyWithText(cb.Message, text, prev, next)
+}
+
+func (b *Bot) currentChunk(cb *tgbotapi.CallbackQuery) {
+	prev := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
+	next := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
+	text, err := b.s.CurrentChunk(cb.From.ID)
+	if err != nil {
+		b.replyError(cb.Message, "Failed to get next chunk", err)
 		return
 	}
 	// reply chunk text with next/prev buttons
