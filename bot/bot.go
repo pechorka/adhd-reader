@@ -199,6 +199,15 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 	default:
 		b.saveTextFromMessage(msg)
 	}
+
+	// command for bot father to add command help
+	/*
+		/setcommands
+		list - list all texts
+		page - set page number, pass page number as argument
+		chunk - set chunk size, pass chunk size as argument
+		delete - delete text, pass text name as argument
+	*/
 }
 
 func (b *Bot) start(msg *tgbotapi.Message) {
