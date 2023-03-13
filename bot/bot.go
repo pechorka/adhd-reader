@@ -56,6 +56,43 @@ func (b *Bot) Stop() {
 	b.bot.StopReceivingUpdates()
 }
 
+func (b *Bot) handleMsg(msg *tgbotapi.Message) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
+		}
+	}()
+
+	if msg.Document != nil {
+		b.saveTextFromDocument(msg)
+		return
+	}
+
+	switch msg.Command() {
+	case "start":
+		b.start(msg)
+	case "list":
+		b.list(msg)
+	case "page":
+		b.page(msg)
+	case "chunk":
+		b.chunk(msg)
+	case "delete":
+		b.delete(msg)
+	default:
+		b.saveTextFromMessage(msg)
+	}
+
+	// command for bot father to add command help
+	/*
+		/setcommands
+		list - list all texts
+		page - set page number, pass page number as argument
+		chunk - set chunk size, pass chunk size as argument
+		delete - delete text, pass text name as argument
+	*/
+}
+
 func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 	switch {
 	case strings.HasPrefix(cb.Data, textSelect):
@@ -141,50 +178,13 @@ func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
 func (b *Bot) currentChunk(cb *tgbotapi.CallbackQuery) {
 	prev := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
 	next := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
-	text, err := b.s.CurrentChunk(cb.From.ID)
+	text, err := b.s.CurrentOrNextChunk(cb.From.ID)
 	if err != nil {
 		b.replyError(cb.Message, "Failed to get next chunk", err)
 		return
 	}
 	// reply chunk text with next/prev buttons
 	b.replyWithText(cb.Message, text, prev, next)
-}
-
-func (b *Bot) handleMsg(msg *tgbotapi.Message) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
-		}
-	}()
-
-	if msg.Document != nil {
-		b.saveTextFromDocument(msg)
-		return
-	}
-
-	switch msg.Command() {
-	case "start":
-		b.start(msg)
-	case "list":
-		b.list(msg)
-	case "page":
-		b.page(msg)
-	case "chunk":
-		b.chunk(msg)
-	case "delete":
-		b.delete(msg)
-	default:
-		b.saveTextFromMessage(msg)
-	}
-
-	// command for bot father to add command help
-	/*
-		/setcommands
-		list - list all texts
-		page - set page number, pass page number as argument
-		chunk - set chunk size, pass chunk size as argument
-		delete - delete text, pass text name as argument
-	*/
 }
 
 func (b *Bot) start(msg *tgbotapi.Message) {
