@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/aakrasnova/zone-mate/bot"
+	"github.com/aakrasnova/zone-mate/queue"
 	"github.com/aakrasnova/zone-mate/service"
 	"github.com/aakrasnova/zone-mate/storage"
 )
@@ -54,8 +55,8 @@ func run() error {
 	defer storage.Close()
 
 	service := service.NewService(storage, 500)
-
-	b, err := bot.NewBot(service, cfg.TgToken)
+	msgQueue := queue.NewMessageQueue()
+	b, err := bot.NewBot(service, msgQueue, cfg.TgToken)
 	if err != nil {
 		return err
 	}

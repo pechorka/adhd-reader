@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/aakrasnova/zone-mate/pkg/fileloader"
+	"github.com/aakrasnova/zone-mate/queue"
 	"github.com/aakrasnova/zone-mate/service"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -19,11 +20,12 @@ const (
 )
 
 type Bot struct {
-	s   *service.Service
-	bot *tgbotapi.BotAPI
+	s        *service.Service
+	bot      *tgbotapi.BotAPI
+	msgQueue *queue.MessageQueue
 }
 
-func NewBot(s *service.Service, token string) (*Bot, error) {
+func NewBot(s *service.Service, msgQueue *queue.MessageQueue, token string) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		return nil, err
@@ -32,13 +34,14 @@ func NewBot(s *service.Service, token string) (*Bot, error) {
 
 	bot.Debug = true // TODO before release take from config
 
-	return &Bot{s: s, bot: bot}, nil
+	return &Bot{s: s, bot: bot, msgQueue: msgQueue}, nil
 }
 
 func (b *Bot) Run() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
+	b.msgQueue.Run(b.onQueueFilled)
 	updates := b.bot.GetUpdatesChan(u)
 
 	for update := range updates {
@@ -54,14 +57,15 @@ func (b *Bot) Run() {
 
 func (b *Bot) Stop() {
 	b.bot.StopReceivingUpdates()
+	b.msgQueue.Stop()
 }
 
 func (b *Bot) handleMsg(msg *tgbotapi.Message) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
-		}
-	}()
+	// defer func() {
+	// 	if rec := recover(); rec != nil {
+	// 		b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
+	// 	}
+	// }()
 
 	if msg.Document != nil {
 		b.saveTextFromDocument(msg)
@@ -279,36 +283,44 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
+	b.msgQueue.Add(msg.From.ID, msg.Text)
+}
+
+func (b *Bot) onQueueFilled(userID int64, msgText string) {
+	log.Println("Got message from queue for user", userID, "message length", len(msgText))
 	// first line is text name
-	textName, _, ok := strings.Cut(msg.Text, "\n")
+	textName, _, ok := strings.Cut(msgText, "\n")
 	if !ok {
-		b.replyWithText(msg, "Text name not found (first line should be text name)")
+		b.sendToID(userID, "Text name not found (first line should be text name)")
 		return
 	}
-	textID, err := b.s.AddText(msg.From.ID, textName, msg.Text)
+	textID, err := b.s.AddText(userID, textName, msgText)
 	if err != nil {
-		b.replyError(msg, "Faled to save text", err)
+		b.sendToID(userID, "Faled to save text: "+err.Error())
 		return
 	}
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
-	b.replyWithText(msg, fmt.Sprintf("Text <code>%s</code> is saved", textName), readBtn, deleteBtn)
+	b.sendToID(userID, fmt.Sprintf("Text <code>%s</code> is saved", textName), readBtn, deleteBtn)
 }
 
 func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) {
 	msg := tgbotapi.NewMessage(to.Chat.ID, text)
 	msg.ReplyToMessageID = to.MessageID
-	msg.ParseMode = tgbotapi.ModeHTML
 	b.send(msg, buttons...)
 }
 
 func (b *Bot) replyError(to *tgbotapi.Message, text string, err error, buttons ...tgbotapi.InlineKeyboardButton) {
 	msg := tgbotapi.NewMessage(to.Chat.ID, text+": "+err.Error())
 	msg.ReplyToMessageID = to.MessageID
-	msg.ParseMode = tgbotapi.ModeHTML
 	if err != nil {
 		log.Println(err.Error())
 	}
+	b.send(msg, buttons...)
+}
+
+func (b *Bot) sendToID(userID int64, text string, buttons ...tgbotapi.InlineKeyboardButton) {
+	msg := tgbotapi.NewMessage(userID, text)
 	b.send(msg, buttons...)
 }
 
@@ -322,6 +334,7 @@ func (b *Bot) send(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboar
 			rowButtons...,
 		)
 	}
+	msg.ParseMode = tgbotapi.ModeHTML
 	_, err := b.bot.Send(msg)
 	if err != nil {
 		log.Println("error while sending message: ", err)
