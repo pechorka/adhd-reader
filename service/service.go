@@ -11,6 +11,7 @@ import (
 var ErrTextFinished = errors.New("text finished")
 var ErrFirstChunk = errors.New("first chunk")
 var ErrTextNotSelected = errors.New("text is not selected")
+var ErrTextNotUTF8 = errors.New("text is not valid utf8")
 
 const telegramMessageLengthLimit = 4096
 
@@ -39,6 +40,9 @@ func (s *Service) AddText(userID int64, textName, text string) (string, error) {
 	}
 	if len(textName) > 255 {
 		return "", errors.Errorf("text name %s is too long, max length is 255 (less if you use emojis/non-ascii symbols)", textName)
+	}
+	if !utf8.ValidString(text) {
+		return "", ErrTextNotUTF8
 	}
 	chunkSize, err := s.s.GetChunkSize(userID)
 	if err != nil {

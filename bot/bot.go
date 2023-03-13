@@ -266,6 +266,10 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	}
 	textID, err := b.s.AddText(msg.From.ID, msg.Document.FileName, text)
 	if err != nil {
+		if err == service.ErrTextNotUTF8 {
+			b.replyWithText(msg, "Text is not in UTF-8 encoding")
+			return
+		}
 		b.replyError(msg, "Faled to save text", err)
 		return
 	}
@@ -299,7 +303,7 @@ func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbota
 }
 
 func (b *Bot) replyError(to *tgbotapi.Message, text string, err error, buttons ...tgbotapi.InlineKeyboardButton) {
-	msg := tgbotapi.NewMessage(to.Chat.ID, text)
+	msg := tgbotapi.NewMessage(to.Chat.ID, text+": "+err.Error())
 	msg.ReplyToMessageID = to.MessageID
 	msg.ParseMode = tgbotapi.ModeHTML
 	if err != nil {
