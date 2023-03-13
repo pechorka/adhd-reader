@@ -61,11 +61,11 @@ func (b *Bot) Stop() {
 }
 
 func (b *Bot) handleMsg(msg *tgbotapi.Message) {
-	// defer func() {
-	// 	if rec := recover(); rec != nil {
-	// 		b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
-	// 	}
-	// }()
+	defer func() {
+		if rec := recover(); rec != nil {
+			b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
+		}
+	}()
 
 	if msg.Document != nil {
 		b.saveTextFromDocument(msg)
@@ -287,7 +287,6 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) onQueueFilled(userID int64, msgText string) {
-	log.Println("Got message from queue for user", userID, "message length", len(msgText))
 	// first line is text name
 	textName, _, ok := strings.Cut(msgText, "\n")
 	if !ok {
