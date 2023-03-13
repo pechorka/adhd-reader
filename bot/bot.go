@@ -275,7 +275,7 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	}
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
-	b.replyWithText(msg, "This text is saved", readBtn, deleteBtn)
+	b.replyWithText(msg, fmt.Sprintf("Text %q is saved", msg.Document.FileName), readBtn, deleteBtn)
 }
 
 func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
@@ -292,7 +292,7 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 	}
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
-	b.replyWithText(msg, "This text is saved", readBtn, deleteBtn)
+	b.replyWithText(msg, fmt.Sprintf("Text %q is saved", msg.Document.FileName), readBtn, deleteBtn)
 }
 
 func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) {
