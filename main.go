@@ -61,7 +61,7 @@ func run() error {
 	defer store.Close()
 
 	service := service.NewService(store, 500)
-	msgQueue := queue.NewMessageQueue()
+	msgQueue := queue.NewMessageQueue(queue.Config{})
 	b, err := bot.NewBot(service, msgQueue, cfg.TgToken)
 	if err != nil {
 		return err
