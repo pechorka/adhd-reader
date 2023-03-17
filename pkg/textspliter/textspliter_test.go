@@ -1,4 +1,4 @@
-package service
+package textspliter
 
 import (
 	"testing"
@@ -65,7 +65,7 @@ func Test_splitText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := splitText(tt.text, tt.size)
+			got := SplitText(tt.text, tt.size)
 			for i, chunk := range got {
 				require.Equal(t, tt.want[i], chunk)
 			}
