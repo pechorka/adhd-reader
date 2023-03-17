@@ -20,4 +20,6 @@ const (
 	If you encountered a bug or odd behavior you can write to 👩🏻‍🦰 @rubella19 or 🎁 simply create an <a href="https://github.com/pechorka/adhd-reader/issues">issue on GitHub</a>
 	
 	🆘 If you have any further questions or need help just send a message to @rubella19 and we'll get back to you as soon as possible.`
+
+	textDeletedMsg = "Text deleted. Let's choose something to read: /list"
 )

@@ -192,7 +192,7 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 		b.replyError(cb.Message, "Failed to delete text", err)
 		return
 	}
-	b.replyWithText(cb.Message, "Text deleted")
+	b.replyWithText(cb.Message, textDeletedMsg)
 }
 
 func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
@@ -307,7 +307,7 @@ func (b *Bot) delete(msg *tgbotapi.Message) {
 		b.replyError(msg, "Failed to delete text", err)
 		return
 	}
-	b.replyWithText(msg, "Text deleted")
+	b.replyWithText(msg, textDeletedMsg)
 }
 
 func (b *Bot) help(msg *tgbotapi.Message) {
