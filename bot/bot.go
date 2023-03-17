@@ -121,6 +121,10 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		return
 	}
 
+	if len(msg.Text) < 200 {
+		log.Println("Received message with text: ", msg.Text)
+	}
+
 	switch msg.Command() {
 	case "start":
 		b.start(msg)
