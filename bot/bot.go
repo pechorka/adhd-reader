@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -60,12 +61,16 @@ func (b *Bot) Stop() {
 	b.msgQueue.Stop()
 }
 
+func (b *Bot) handlePanic(msg *tgbotapi.Message) {
+	if rec := recover(); rec != nil {
+		b.replyWithText(msg, "Something went wrong, please try again later")
+		b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
+		log.Println("Panic: ", rec, "Stack: ", string(debug.Stack()))
+	}
+}
+
 func (b *Bot) handleMsg(msg *tgbotapi.Message) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
-		}
-	}()
+	defer b.handlePanic(msg)
 
 	if msg.Document != nil {
 		b.saveTextFromDocument(msg)
@@ -98,6 +103,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
+	defer b.handlePanic(cb.Message)
+
 	switch {
 	case strings.HasPrefix(cb.Data, textSelect):
 		b.selectText(cb)
