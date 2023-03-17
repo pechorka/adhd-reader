@@ -121,11 +121,7 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		return
 	}
 
-	if len(msg.Text) < 200 {
-		log.Println("Received message with text: ", msg.Text)
-	}
-
-	switch msg.Command() {
+	switch cmd := msg.Command(); cmd {
 	case "start":
 		b.start(msg)
 	case "list":
@@ -139,6 +135,9 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 	case "help":
 		b.help(msg)
 	default:
+		if cmd != "" {
+			log.Println("Unknown command: ", cmd)
+		}
 		b.saveTextFromMessage(msg)
 	}
 
