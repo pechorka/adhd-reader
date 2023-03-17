@@ -24,6 +24,7 @@ const (
 type config struct {
 	TgToken string `json:"tg_token"`
 	Debug   bool   `json:"debug"`
+	DbPath  string `json:"db_path"`
 }
 
 func readCfg(path string) (*config, error) {
@@ -35,6 +36,9 @@ func readCfg(path string) (*config, error) {
 	var c config
 	if err := json.NewDecoder(f).Decode(&c); err != nil {
 		return nil, err
+	}
+	if c.DbPath == "" {
+		c.DbPath = "./db.db"
 	}
 
 	return &c, nil
@@ -61,7 +65,7 @@ func run() error {
 	if cfg.Debug {
 		store, err = storage.NewTempStorage()
 	} else {
-		store, err = storage.NewStorage("./db.db")
+		store, err = storage.NewStorage(cfg.DbPath)
 	}
 	if err != nil {
 		return err
