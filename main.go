@@ -8,11 +8,19 @@ import (
 	"syscall"
 
 	"github.com/pechorka/adhd-reader/bot"
+	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/queue"
 	"github.com/pechorka/adhd-reader/service"
 	"github.com/pechorka/adhd-reader/storage"
 )
 
+// todo move to config
+const (
+	defaulChunkSize    = 500
+	defaultMaxFileSize = 20 * 1024 * 1024 // 20 MB
+)
+
+// todo migrate to .env
 type config struct {
 	TgToken string `json:"tg_token"`
 	Debug   bool   `json:"debug"`
@@ -62,7 +70,16 @@ func run() error {
 
 	service := service.NewService(store, 500)
 	msgQueue := queue.NewMessageQueue(queue.Config{})
-	b, err := bot.NewBot(service, msgQueue, cfg.TgToken)
+	fileLoader := fileloader.NewLoader(fileloader.Config{
+		MaxFileSize: defaultMaxFileSize,
+	})
+	b, err := bot.NewBot(bot.Config{
+		Token:       cfg.TgToken,
+		Service:     service,
+		MsgQueue:    msgQueue,
+		FileLoader:  fileLoader,
+		MaxFileSize: defaultMaxFileSize,
+	})
 	if err != nil {
 		return err
 	}

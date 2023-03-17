@@ -9,6 +9,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
+	"github.com/pechorka/adhd-reader/pkg/sizeconverter"
 	"github.com/pechorka/adhd-reader/queue"
 	"github.com/pechorka/adhd-reader/service"
 )
@@ -20,14 +21,34 @@ const (
 	prevChunk  = "prev-chunk"
 )
 
+const (
+	defaultMaxFileSize = 20 * 1024 * 1024 // 20 MB
+)
+
 type Bot struct {
-	s        *service.Service
-	bot      *tgbotapi.BotAPI
-	msgQueue *queue.MessageQueue
+	service     *service.Service
+	bot         *tgbotapi.BotAPI
+	msgQueue    *queue.MessageQueue
+	fileLoader  *fileloader.Loader
+	maxFileSize int
 }
 
-func NewBot(s *service.Service, msgQueue *queue.MessageQueue, token string) (*Bot, error) {
-	bot, err := tgbotapi.NewBotAPI(token)
+type Config struct {
+	Token       string
+	Service     *service.Service
+	MsgQueue    *queue.MessageQueue
+	FileLoader  *fileloader.Loader
+	MaxFileSize int
+}
+
+func NewBot(cfg Config) (*Bot, error) {
+	if cfg.MaxFileSize == 0 {
+		cfg.MaxFileSize = defaultMaxFileSize
+	}
+	if err := validateConfig(cfg); err != nil {
+		return nil, err
+	}
+	bot, err := tgbotapi.NewBotAPI(cfg.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +56,29 @@ func NewBot(s *service.Service, msgQueue *queue.MessageQueue, token string) (*Bo
 
 	bot.Debug = true // TODO before release take from config
 
-	return &Bot{s: s, bot: bot, msgQueue: msgQueue}, nil
+	return &Bot{
+		service:     cfg.Service,
+		bot:         bot,
+		msgQueue:    cfg.MsgQueue,
+		fileLoader:  cfg.FileLoader,
+		maxFileSize: cfg.MaxFileSize,
+	}, nil
+}
+
+func validateConfig(cfg Config) error {
+	if cfg.Token == "" {
+		return fmt.Errorf("token is empty")
+	}
+	if cfg.Service == nil {
+		return fmt.Errorf("service is nil")
+	}
+	if cfg.MsgQueue == nil {
+		return fmt.Errorf("msgQueue is nil")
+	}
+	if cfg.FileLoader == nil {
+		return fmt.Errorf("fileLoader is nil")
+	}
+	return nil
 }
 
 func (b *Bot) Run() {
@@ -128,13 +171,13 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 
 func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 	textUUID := strings.TrimPrefix(cb.Data, textSelect)
-	err := b.s.SelectText(cb.From.ID, textUUID)
+	err := b.service.SelectText(cb.From.ID, textUUID)
 	if err != nil {
 		b.replyError(cb.Message, "Failed to select text", err)
 		return
 	}
 	msg := "Text selected successfully"
-	currentText, err := b.s.CurrentText(cb.From.ID)
+	currentText, err := b.service.CurrentText(cb.From.ID)
 	if err == nil {
 		msg = fmt.Sprintf("Current selected text is: <code>%s</code>", currentText.Name)
 	}
@@ -144,7 +187,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 
 func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 	textUUID := strings.TrimPrefix(cb.Data, deleteText)
-	err := b.s.DeleteTextByUUID(cb.From.ID, textUUID)
+	err := b.service.DeleteTextByUUID(cb.From.ID, textUUID)
 	if err != nil {
 		b.replyError(cb.Message, "Failed to delete text", err)
 		return
@@ -155,11 +198,11 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
 	prev := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
 	next := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
-	text, err := b.s.NextChunk(cb.From.ID)
+	text, err := b.service.NextChunk(cb.From.ID)
 	if err != nil {
 		if err == service.ErrTextFinished {
 			buttons := []tgbotapi.InlineKeyboardButton{prev}
-			currentText, err := b.s.CurrentText(cb.From.ID)
+			currentText, err := b.service.CurrentText(cb.From.ID)
 			if err == nil {
 				buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Delete text", deleteText+currentText.UUID))
 			}
@@ -176,7 +219,7 @@ func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
 func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
 	prev := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
 	next := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
-	text, err := b.s.PrevChunk(cb.From.ID)
+	text, err := b.service.PrevChunk(cb.From.ID)
 	if err != nil {
 		if err == service.ErrFirstChunk {
 			b.replyWithText(cb.Message, "Can't go back, you are at the first chunk", next)
@@ -192,7 +235,7 @@ func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
 func (b *Bot) currentChunk(cb *tgbotapi.CallbackQuery) {
 	prev := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
 	next := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
-	text, err := b.s.CurrentOrNextChunk(cb.From.ID)
+	text, err := b.service.CurrentOrNextChunk(cb.From.ID)
 	if err != nil {
 		b.replyError(cb.Message, "Failed to get next chunk", err)
 		return
@@ -206,7 +249,7 @@ func (b *Bot) start(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) list(msg *tgbotapi.Message) {
-	texts, err := b.s.ListTexts(msg.From.ID)
+	texts, err := b.service.ListTexts(msg.From.ID)
 	if err != nil {
 		b.replyError(msg, "Failed to list texts", err)
 		return
@@ -230,7 +273,7 @@ func (b *Bot) page(msg *tgbotapi.Message) {
 		b.replyError(msg, "Failed to parse page", err)
 		return
 	}
-	err = b.s.SetPage(msg.From.ID, page)
+	err = b.service.SetPage(msg.From.ID, page)
 	if err != nil {
 		if err == service.ErrTextNotSelected {
 			b.replyWithText(msg, "Text not selected")
@@ -249,7 +292,7 @@ func (b *Bot) chunk(msg *tgbotapi.Message) {
 		b.replyError(msg, "Failed to parse chunk", err)
 		return
 	}
-	err = b.s.SetChunkSize(msg.From.ID, chunk)
+	err = b.service.SetChunkSize(msg.From.ID, chunk)
 	if err != nil {
 		b.replyError(msg, "Failed to set chunk size", err)
 		return
@@ -259,7 +302,7 @@ func (b *Bot) chunk(msg *tgbotapi.Message) {
 
 func (b *Bot) delete(msg *tgbotapi.Message) {
 	textName := strings.TrimSpace(msg.CommandArguments())
-	err := b.s.DeleteTextByName(msg.From.ID, textName)
+	err := b.service.DeleteTextByName(msg.From.ID, textName)
 	if err != nil {
 		b.replyError(msg, "Failed to delete text", err)
 		return
@@ -272,17 +315,21 @@ func (b *Bot) help(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
+	if msg.Document.FileSize != 0 && msg.Document.FileSize > b.maxFileSize {
+		b.replyWithText(msg, "File size is too big. Max file size is "+sizeconverter.HumanReadableSizeInMB(b.maxFileSize))
+		return
+	}
 	fileURL, err := b.bot.GetFileDirectURL(msg.Document.FileID)
 	if err != nil {
 		b.replyError(msg, "Failed to build file url", err)
 		return
 	}
-	text, err := fileloader.DownloadTextFile(fileURL)
+	text, err := b.fileLoader.DownloadTextFile(fileURL)
 	if err != nil {
 		b.replyError(msg, "Failed to download text file", err)
 		return
 	}
-	textID, err := b.s.AddText(msg.From.ID, msg.Document.FileName, text)
+	textID, err := b.service.AddText(msg.From.ID, msg.Document.FileName, text)
 	if err != nil {
 		if err == service.ErrTextNotUTF8 {
 			b.replyWithText(msg, "Text is not in UTF-8 encoding")
@@ -307,7 +354,7 @@ func (b *Bot) onQueueFilled(userID int64, msgText string) {
 		b.sendToID(userID, "Text name not found (first line should be text name)")
 		return
 	}
-	textID, err := b.s.AddText(userID, textName, msgText)
+	textID, err := b.service.AddText(userID, textName, msgText)
 	if err != nil {
 		b.sendToID(userID, "Faled to save text: "+err.Error())
 		return
