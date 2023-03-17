@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -46,7 +47,7 @@ func tokenize(text string) []Token {
 }
 
 var linkRegexp = regexp.MustCompile(`^(http://|https://|ftp://|www\.)`)
-var quoteRegexp = regexp.MustCompile(`^("|'|«|„|“|` + "`" + `|»|”|”)`)
+var quoteRegexp = regexp.MustCompile(`^("|'|«|„|“|` + "`" + `|»|”)`)
 
 func tokenizer(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	nextPunctuationIsEndOfSentence := false
@@ -64,17 +65,19 @@ func tokenizer(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			j := i
 			for ; j < len(data) && data[j] != ' '; j++ {
 			}
-			if j-1 > -1 && isPunctuation(data[j-1]) {
-				j-- // link ends with punctuation mark
+
+			if ok, size := isPunctuationBefore(data, j); ok {
+				j -= size // link ends with punctuation mark
 			}
 			return j, data[i:j], nil
 		}
 		if quoteRegexp.Match(data[i:]) {
+			_, size := utf8.DecodeRune(data[i:])
 			if i-1 > -1 && data[i-1] == ' ' { // begining of quote
-				return i + 1, data[i : i+1], nil
+				return i + size, data[i : i+size], nil
 			}
 			if i == 0 { // begining or end of quote
-				return i + 1, data[i : i+1], nil
+				return i + size, data[i : i+size], nil
 			}
 			// word with quote in the middle, for example: "Let's"
 			if isInTheMiddleOfTheWordAt(data, i) {
@@ -82,12 +85,12 @@ func tokenizer(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			}
 			return i, data[:i], nil // return quoted word first
 		}
-		if isPunctuation(data[i]) {
+		if ok, size := isPunctuationAt(data, i); ok {
 			if i == 0 { // word before punctuation already parsed
-				return i + 1, data[i : i+1], nil
+				return i + size, data[i : i+size], nil
 			}
 			// word with punctuation in the middle, for example: "i.e."
-			if isInTheMiddleOfTheWordAt(data, i) && isPunctuationAfterPuncuationAndNextRune(data, i) {
+			if isInTheMiddleOfTheWordAt(data, i) && isPunctuationAfterNextRune(data, i+size) {
 				nextPunctuationIsEndOfSentence = true
 				continue
 			}
@@ -107,35 +110,49 @@ func tokenizer(data []byte, atEOF bool) (advance int, token []byte, err error) {
 }
 
 func isInTheMiddleOfTheWordAt(data []byte, i int) bool {
-	return i-1 > -1 && data[i-1] != ' ' &&
-		i+1 < len(data) && data[i+1] != ' ' && !isPunctuation(data[i+1])
+	if i+1 < len(data) {
+		nextRune, _ := utf8.DecodeRune(data[i+1:])
+		if !unicode.IsLetter(nextRune) {
+			return false
+		}
+	}
+	prevRune, _ := decodeRunBefore(data, i)
+	return unicode.IsLetter(prevRune)
 }
 
-func isPunctuationAfterPuncuationAndNextRune(data []byte, i int) bool {
-	i++
-	if i >= len(data) {
-		return false
+func decodeRunBefore(data []byte, i int) (prevRune rune, size int) {
+	prevRune = utf8.RuneError
+	j := i - 1
+	for j > -1 && prevRune == utf8.RuneError {
+		prevRune, size = utf8.DecodeLastRune(data[j:i])
+		j--
 	}
+	return prevRune, size
+}
+
+func isPunctuationAfterNextRune(data []byte, i int) bool {
 	_, size := utf8.DecodeRune(data[i:])
-	return i+size < len(data) && isPunctuation(data[i+size])
+	ok, _ := isPunctuationAt(data, i+size)
+	return ok
 }
 
-func isPunctuation(b byte) bool {
-	switch b {
-	case ',', '.', '!', '?', ':', ';':
-		return true
-	default:
-		return false
-	}
+func isPunctuationAt(data []byte, i int) (bool, int) {
+	r, size := utf8.DecodeRune(data[i:])
+	return unicode.IsPunct(r), size
+}
+
+func isPunctuationBefore(data []byte, i int) (bool, int) {
+	r, size := decodeRunBefore(data, i)
+	return unicode.IsPunct(r), size
 }
 
 func getTokenType(token string) TokenType {
 	switch token {
 	case ".", "!", "?":
 		return EndSentence
-	case ",", ":", ";":
+	case ",", ":", ";", "—", "-":
 		return Punctuation
-	case "\"", "'", "«", "„", "“", "`", "»":
+	case "\"", "'", "«", "»", "„", "`", "”", "“", "‘", "’":
 		return Quote
 	case " ":
 		return Space
