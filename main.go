@@ -15,6 +15,7 @@ import (
 
 type config struct {
 	TgToken string `json:"tg_token"`
+	Debug   bool   `json:"debug"`
 }
 
 func readCfg(path string) (*config, error) {
@@ -48,13 +49,18 @@ func run() error {
 		return err
 	}
 
-	storage, err := storage.NewStorage("./db.db")
+	var store *storage.Storage
+	if cfg.Debug {
+		store, err = storage.NewTempStorage()
+	} else {
+		store, err = storage.NewStorage("./db.db")
+	}
 	if err != nil {
 		return err
 	}
-	defer storage.Close()
+	defer store.Close()
 
-	service := service.NewService(storage, 500)
+	service := service.NewService(store, 500)
 	msgQueue := queue.NewMessageQueue()
 	b, err := bot.NewBot(service, msgQueue, cfg.TgToken)
 	if err != nil {

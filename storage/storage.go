@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -26,7 +27,8 @@ var (
 
 // Storage is a wrapper around bolt.DB
 type Storage struct {
-	db *bolt.DB
+	db        *bolt.DB
+	closeFunc func() error
 }
 
 // NewStorage creates a new storage
@@ -35,12 +37,31 @@ func NewStorage(path string) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Storage{db: db}, nil
+	return &Storage{
+		db:        db,
+		closeFunc: db.Close,
+	}, nil
+}
+
+func NewTempStorage() (*Storage, error) {
+	path := fmt.Sprintf("/tmp/%s.db", uuid.New().String())
+	storage, err := NewStorage(path)
+	if err != nil {
+		return nil, err
+	}
+	originalCloseFunc := storage.closeFunc
+	storage.closeFunc = func() error {
+		if err := originalCloseFunc(); err != nil {
+			return err
+		}
+		return os.Remove(path)
+	}
+	return storage, nil
 }
 
 // Close closes the storage
 func (s *Storage) Close() error {
-	return s.db.Close()
+	return s.closeFunc()
 }
 
 func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
@@ -108,7 +129,9 @@ func (s *Storage) GetTexts(id int64) (UserTexts, error) {
 	return texts, err
 }
 
-func (s *Storage) UpdateTexts(userID int64, updFunc func(*UserTexts) error) error {
+type UpdateTextsFunc func(*UserTexts) error
+
+func (s *Storage) UpdateTexts(userID int64, updFunc UpdateTextsFunc) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(bktUserInfo)
 		if err != nil {
@@ -126,7 +149,9 @@ func (s *Storage) UpdateTexts(userID int64, updFunc func(*UserTexts) error) erro
 	})
 }
 
-func (s *Storage) SelectChunk(userID int64, updFunc func(curChunk, totalChunks int64) (nextChunk int64, err error)) (string, error) {
+type SelectChunkFunc func(curChunk, totalChunks int64) (nextChunk int64, err error)
+
+func (s *Storage) SelectChunk(userID int64, updFunc SelectChunkFunc) (string, error) {
 	var chunkText string
 	err := s.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(bktUserInfo)

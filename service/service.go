@@ -15,12 +15,24 @@ var ErrTextNotUTF8 = errors.New("text is not valid utf8")
 
 const telegramMessageLengthLimit = 4096
 
+type Storage interface {
+	AddText(userID int64, newText storage.NewText) (string, error)
+	GetTexts(userID int64) (storage.UserTexts, error)
+	UpdateTexts(userID int64, updFunc storage.UpdateTextsFunc) error
+	DeleteTextByUUID(userID int64, uuid string) error
+	DeleteTextByName(userID int64, name string) error
+
+	SetChunkSize(userID int64, chunkSize int64) error
+	GetChunkSize(userID int64) (int64, error)
+	SelectChunk(userID int64, updFunc storage.SelectChunkFunc) (string, error)
+}
+
 type Service struct {
-	s         *storage.Storage
+	s         Storage
 	chunkSize int64
 }
 
-func NewService(s *storage.Storage, chunkSize int64) *Service {
+func NewService(s Storage, chunkSize int64) *Service {
 	return &Service{s: s, chunkSize: chunkSize}
 }
 
