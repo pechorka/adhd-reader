@@ -130,21 +130,21 @@ func TestService_PageNavigation(t *testing.T) {
 	}
 
 	for i := 0; i < len(chunks); i++ {
-		chunkText, err := srv.NextChunk(userID)
+		_, chunkText, _, err := srv.NextChunk(userID)
 		require.NoError(t, err)
 		require.Equal(t, chunks[i], chunkText)
 	}
-	_, err = srv.NextChunk(userID)
+	_, _, _, err = srv.NextChunk(userID)
 	require.Equal(t, ErrTextFinished, err)
 
 	// -2, because we are currently on the last chunk.
 	// So prev chunk should the 3rd one.
 	for i := len(chunks) - 2; i >= 0; i-- {
-		chunkText, err := srv.PrevChunk(userID)
+		_, chunkText, _, err := srv.PrevChunk(userID)
 		require.NoError(t, err)
 		require.Equal(t, chunks[i], chunkText)
 	}
-	_, err = srv.PrevChunk(userID)
+	_, _, _, err = srv.PrevChunk(userID)
 	require.Equal(t, ErrFirstChunk, err)
 }
 

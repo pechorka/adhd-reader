@@ -105,7 +105,7 @@ func (s *Service) SelectText(userID int64, textUUID string) error {
 }
 
 func (s *Service) SetPage(userID, page int64) error {
-	_, err := s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
+	_, err := s.s.SelectChunk(userID, func(_ storage.Text, _, totalChunks int64) (nextChunk int64, err error) {
 		if page >= totalChunks || page < 0 {
 			return 0, errors.Errorf("invalid page index, should be between 0 and %d", totalChunks-1)
 		}
@@ -114,8 +114,8 @@ func (s *Service) SetPage(userID, page int64) error {
 	return err
 }
 
-func (s *Service) NextChunk(userID int64) (string, error) {
-	return s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
+func (s *Service) NextChunk(userID int64) (storage.Text, string, ChunkType, error) {
+	return s.selectChunk(userID, func(_ storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
 		if curChunk >= totalChunks-1 {
 			return 0, ErrTextFinished
 		}
@@ -123,8 +123,8 @@ func (s *Service) NextChunk(userID int64) (string, error) {
 	})
 }
 
-func (s *Service) PrevChunk(userID int64) (string, error) {
-	return s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
+func (s *Service) PrevChunk(userID int64) (storage.Text, string, ChunkType, error) {
+	return s.selectChunk(userID, func(_ storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
 		if curChunk <= 0 {
 			return 0, ErrFirstChunk
 		}
@@ -132,13 +132,40 @@ func (s *Service) PrevChunk(userID int64) (string, error) {
 	})
 }
 
-func (s *Service) CurrentOrNextChunk(userID int64) (string, error) {
-	return s.s.SelectChunk(userID, func(curChunk, totalChunks int64) (nextChunk int64, err error) {
+func (s *Service) CurrentOrFirstChunk(userID int64) (storage.Text, string, ChunkType, error) {
+	return s.selectChunk(userID, func(_ storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
 		if curChunk == storage.NotSelected {
 			return 0, nil // return first chunk
 		}
 		return curChunk, nil
 	})
+}
+
+type ChunkType string
+
+const (
+	ChunkTypeFirst ChunkType = "first"
+	ChunkTypeLast  ChunkType = "last"
+)
+
+func (s *Service) selectChunk(userID int64, selectChunk storage.SelectChunkFunc) (storage.Text, string, ChunkType, error) {
+	var chunkType ChunkType
+	var curText storage.Text
+	text, err := s.s.SelectChunk(userID, func(text storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
+		curText = text
+		nextChunk, err = selectChunk(text, curChunk, totalChunks)
+		if err != nil {
+			return 0, err
+		}
+		if nextChunk == 0 {
+			chunkType = ChunkTypeFirst
+		}
+		if nextChunk == totalChunks-1 {
+			chunkType = ChunkTypeLast
+		}
+		return nextChunk, nil
+	})
+	return curText, text, chunkType, err
 }
 
 func (s *Service) DeleteTextByUUID(userID int64, textUUID string) error {

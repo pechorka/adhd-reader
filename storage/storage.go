@@ -149,7 +149,7 @@ func (s *Storage) UpdateTexts(userID int64, updFunc UpdateTextsFunc) error {
 	})
 }
 
-type SelectChunkFunc func(curChunk, totalChunks int64) (nextChunk int64, err error)
+type SelectChunkFunc func(text Text, curChunk, totalChunks int64) (nextChunk int64, err error)
 
 func (s *Storage) SelectChunk(userID int64, updFunc SelectChunkFunc) (string, error) {
 	var chunkText string
@@ -166,13 +166,14 @@ func (s *Storage) SelectChunk(userID int64, updFunc SelectChunkFunc) (string, er
 		if texts.Current == NotSelected {
 			return errors.New("no text selected")
 		}
-		textBucket := tx.Bucket(texts.Texts[texts.Current].BucketName)
+		curText := texts.Texts[texts.Current]
+		textBucket := tx.Bucket(curText.BucketName)
 		if textBucket == nil { // should not happen
 			return errors.New("unexpected error: text bucket not found")
 		}
 		curChunk := bytesToInt64(textBucket.Get(currentChunkKey))
 		totalChunks := bytesToInt64(textBucket.Get(totalChunksKey))
-		nextChunk, err := updFunc(curChunk, totalChunks)
+		nextChunk, err := updFunc(curText, curChunk, totalChunks)
 		if err != nil {
 			return err
 		}
