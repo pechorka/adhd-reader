@@ -1,10 +1,12 @@
 version: '3'
 
 tasks:
-  bot:
+  # helper to run on windows.
+  # for some reason go build -o bot && ./bot doesn't work on windows.
+  bot: 
     cmds:
       - go install
-      - zone-mate.exe
+      - adhd-reader.exe
   
   test:
     cmds:

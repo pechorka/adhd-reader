@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/aakrasnova/zone-mate/storage"
+	"github.com/pechorka/adhd-reader/storage"
 	"github.com/pkg/errors"
 )
 

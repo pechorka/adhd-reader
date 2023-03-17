@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aakrasnova/zone-mate/pkg/fileloader"
-	"github.com/aakrasnova/zone-mate/queue"
-	"github.com/aakrasnova/zone-mate/service"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/pechorka/adhd-reader/pkg/fileloader"
+	"github.com/pechorka/adhd-reader/queue"
+	"github.com/pechorka/adhd-reader/service"
 )
 
 const (

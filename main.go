@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/aakrasnova/zone-mate/bot"
-	"github.com/aakrasnova/zone-mate/queue"
-	"github.com/aakrasnova/zone-mate/service"
-	"github.com/aakrasnova/zone-mate/storage"
+	"github.com/pechorka/adhd-reader/bot"
+	"github.com/pechorka/adhd-reader/queue"
+	"github.com/pechorka/adhd-reader/service"
+	"github.com/pechorka/adhd-reader/storage"
 )
 
 type config struct {

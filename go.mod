@@ -1,4 +1,4 @@
-module github.com/aakrasnova/zone-mate
+module github.com/pechorka/adhd-reader
 
 go 1.19
 
