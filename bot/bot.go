@@ -6,6 +6,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
@@ -108,7 +109,7 @@ func (b *Bot) Stop() {
 func (b *Bot) handlePanic(msg *tgbotapi.Message) {
 	if rec := recover(); rec != nil {
 		b.replyWithText(msg, "Something went wrong, please try again later")
-		b.send(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
+		b.sendMsg(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
 		log.Println("Panic: ", rec, "Stack: ", string(debug.Stack()))
 	}
 }
@@ -242,7 +243,38 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 }
 
 func (b *Bot) start(msg *tgbotapi.Message) {
-	b.replyWithText(msg, "I am working")
+	go func() { // todo: stop flow on other commands???
+		b.sendToID(msg.From.ID, firstMsg)
+		b.sendTyping(msg)
+		time.Sleep(2 * time.Second)
+
+		b.sendToID(msg.From.ID, secondMsg)
+		b.sendTyping(msg)
+		time.Sleep(5 * time.Second)
+
+		b.sendToID(msg.From.ID, thirdMsg)
+		b.sendTyping(msg)
+		time.Sleep(2 * time.Second)
+
+		b.sendToID(msg.From.ID, fourthMsg)
+		b.sendToID(msg.From.ID, fifthMsg)
+		b.sendTyping(msg)
+		time.Sleep(2 * time.Second)
+
+		b.sendToID(msg.From.ID, sixthMsg)
+		b.sendTyping(msg)
+		time.Sleep(2 * time.Second)
+
+		fileMsg := tgbotapi.NewDocument(msg.From.ID, tgbotapi.FileBytes{
+			Name:  startFileName,
+			Bytes: startFile,
+		})
+		b.send(fileMsg)
+		b.sendTyping(msg)
+		time.Sleep(2 * time.Second)
+
+		b.sendToID(msg.From.ID, eighthMsg)
+	}()
 }
 
 func (b *Bot) list(msg *tgbotapi.Message) {
@@ -364,7 +396,7 @@ func (b *Bot) onQueueFilled(userID int64, msgText string) {
 func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	msg := tgbotapi.NewMessage(to.Chat.ID, text)
 	msg.ReplyToMessageID = to.MessageID
-	return b.send(msg, buttons...)
+	return b.sendMsg(msg, buttons...)
 }
 
 func (b *Bot) replyError(to *tgbotapi.Message, text string, err error, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
@@ -373,15 +405,23 @@ func (b *Bot) replyError(to *tgbotapi.Message, text string, err error, buttons .
 	if err != nil {
 		log.Println(err.Error())
 	}
-	return b.send(msg, buttons...)
+	return b.sendMsg(msg, buttons...)
 }
 
 func (b *Bot) sendToID(userID int64, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	msg := tgbotapi.NewMessage(userID, text)
-	return b.send(msg, buttons...)
+	return b.sendMsg(msg, buttons...)
 }
 
-func (b *Bot) send(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+func (b *Bot) sendTyping(to *tgbotapi.Message) {
+	action := tgbotapi.NewChatAction(to.Chat.ID, tgbotapi.ChatTyping)
+	_, err := b.bot.Send(action)
+	if err != nil {
+		log.Println("error while sending typing action: ", err)
+	}
+}
+
+func (b *Bot) sendMsg(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	if len(buttons) > 0 {
 		rowButtons := make([][]tgbotapi.InlineKeyboardButton, 0, len(buttons))
 		for _, btn := range buttons {
@@ -392,6 +432,10 @@ func (b *Bot) send(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboar
 		)
 	}
 	msg.ParseMode = tgbotapi.ModeHTML
+	return b.send(msg)
+}
+
+func (b *Bot) send(msg tgbotapi.Chattable) tgbotapi.Message {
 	replyMsg, err := b.bot.Send(msg)
 	if err != nil {
 		log.Println("error while sending message: ", err)
