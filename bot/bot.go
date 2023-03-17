@@ -88,6 +88,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.chunk(msg)
 	case "delete":
 		b.delete(msg)
+	case "help":
+		b.help(msg)
 	default:
 		b.saveTextFromMessage(msg)
 	}
@@ -99,6 +101,7 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		page - set page number, pass page number as argument
 		chunk - set chunk size, pass chunk size as argument
 		delete - delete text, pass text name as argument
+		help - troubleshooting and support
 	*/
 }
 
@@ -262,6 +265,10 @@ func (b *Bot) delete(msg *tgbotapi.Message) {
 		return
 	}
 	b.replyWithText(msg, "Text deleted")
+}
+
+func (b *Bot) help(msg *tgbotapi.Message) {
+	b.replyWithText(msg, helpMsg)
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
