@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/pechorka/adhd-reader/pkg/contenttype"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/sizeconverter"
 	"github.com/pechorka/adhd-reader/queue"
@@ -356,16 +357,29 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 		b.replyWithText(msg, "File size is too big. Max file size is "+sizeconverter.HumanReadableSizeInMB(b.maxFileSize))
 		return
 	}
+	if !contenttype.IsPlainText(msg.Document.MimeType) {
+		b.replyWithText(msg, "Unsupported file format. Please input plain text file or send a message. We currently do not support other file formats.")
+		return
+	}
 	fileURL, err := b.bot.GetFileDirectURL(msg.Document.FileID)
 	if err != nil {
 		b.replyError(msg, "Failed to build file url", err)
 		return
 	}
 	text, err := b.fileLoader.DownloadTextFile(fileURL)
-	if err != nil {
-		b.replyError(msg, "Failed to download text file", err)
+	switch err {
+	case nil:
+	case fileloader.ErrFileIsTooBig:
+		b.replyWithText(msg, "File size is too big. Max file size is "+sizeconverter.HumanReadableSizeInMB(b.maxFileSize))
+		return
+	case fileloader.ErrNotPlainText:
+		b.replyWithText(msg, "Unsupported file format. Please input plain text file or send a message. We currently do not support other file formats.")
+		return
+	default:
+		b.replyError(msg, "Failed to download your file", err)
 		return
 	}
+
 	textID, err := b.service.AddText(msg.From.ID, msg.Document.FileName, text)
 	if err != nil {
 		if err == service.ErrTextNotUTF8 {
