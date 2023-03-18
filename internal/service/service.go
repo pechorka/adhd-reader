@@ -3,8 +3,9 @@ package service
 import (
 	"unicode/utf8"
 
+	"github.com/pechorka/adhd-reader/internal/storage"
+
 	"github.com/pechorka/adhd-reader/pkg/textspliter"
-	"github.com/pechorka/adhd-reader/storage"
 	"github.com/pkg/errors"
 )
 

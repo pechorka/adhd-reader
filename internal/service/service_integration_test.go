@@ -6,7 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pechorka/adhd-reader/storage"
+	"github.com/pechorka/adhd-reader/internal/storage"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

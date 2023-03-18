@@ -1,9 +1,9 @@
 package service
 
 import (
+	"github.com/pechorka/adhd-reader/internal/storage"
 	"testing"
 
-	"github.com/pechorka/adhd-reader/storage"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +29,8 @@ func Test_calculateCompletionPercent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := calculateCompletionPercent(storage.TextWithChunkInfo{
+			got := calculateCompletionPercent(
+				storage.TextWithChunkInfo{
 				TotalChunks:  tt.totalChunks,
 				CurrentChunk: tt.currentChunk,
 			})

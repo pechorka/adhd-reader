@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pechorka/adhd-reader/internal/service"
+	"github.com/pechorka/adhd-reader/internal/storage"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,8 +12,6 @@ import (
 	"github.com/pechorka/adhd-reader/cmd/tgbot/internal/bot"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/queue"
-	"github.com/pechorka/adhd-reader/service"
-	"github.com/pechorka/adhd-reader/storage"
 )
 
 // todo move to config

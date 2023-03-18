@@ -2,19 +2,21 @@ package bot
 
 import (
 	"fmt"
+
 	"log"
 	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pechorka/adhd-reader/internal/service"
+	"github.com/pechorka/adhd-reader/internal/storage"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pechorka/adhd-reader/pkg/contenttype"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/queue"
 	"github.com/pechorka/adhd-reader/pkg/sizeconverter"
-	"github.com/pechorka/adhd-reader/service"
-	"github.com/pechorka/adhd-reader/storage"
 )
 
 const (
