@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package api;
+
+import "google/api/annotations.proto";
+
+option go_package = "github.com/pechorka/adhd-reader/generated/api;api";
+
+service AdhdReaderService {
+  rpc SetChunkSize (SetChunkSizeRequest) returns (SetChunkSizeResponse) {
+    option (google.api.http) = {
+      post: "/v1/adhdreader/setchunksize/{chunk_size}"
+    };
+  }
+  rpc AddText (AddTextRequest) returns (AddTextResponse) {
+    option (google.api.http) = {
+      post: "/v1/adhdreader/addtext"
+      body: "*"
+    };
+  }
+  rpc ListTexts (ListTextsRequest) returns (ListTextsResponse) {
+    option (google.api.http) = {
+      get: "/v1/adhdreader/listtexts"
+    };
+  }
+  rpc SelectText (SelectTextRequest) returns (SelectTextResponse) {
+    option (google.api.http) = {
+      post: "/v1/adhdreader/selecttext/{text_uuid}"
+    };
+  }
+  rpc SetPage (SetPageRequest) returns (SetPageResponse) {
+    option (google.api.http) = {
+      post: "/v1/adhdreader/setpage"
+      body: "*"
+    };
+  }
+  rpc NextChunk (NextChunkRequest) returns (NextChunkResponse) {
+    option (google.api.http) = {
+      get: "/v1/adhdreader/nextchunk"
+    };
+  }
+  rpc PrevChunk (PrevChunkRequest) returns (PrevChunkResponse) {
+    option (google.api.http) = {
+      get: "/v1/adhdreader/prevchunk"
+    };
+  }
+}
+
+message TextWithCompletion {
+  string uuid = 1;
+  string name = 2;
+  int32 completion_percent = 3;
+}
+
+message Text{
+  string uuid = 1;
+  string name = 2;
+}
+
+message SetChunkSizeRequest {
+  int64 chunk_size = 1;
+}
+
+message SetChunkSizeResponse {}
+
+message AddTextRequest {
+  string text_name = 1;
+  string text = 2;
+}
+
+message AddTextResponse {
+  string text_uuid = 1;
+}
+
+message ListTextsRequest {}
+
+message ListTextsResponse {
+  repeated TextWithCompletion texts = 1;
+}
+
+message SelectTextRequest {
+  string text_uuid = 1;
+}
+
+message SelectTextResponse {
+  Text text = 1;
+}
+
+message SetPageRequest {
+  int64 page = 1;
+}
+
+message SetPageResponse {}
+
+message NextChunkRequest {}
+
+message NextChunkResponse {
+  string chunk = 1;
+}
+
+message PrevChunkRequest {}
+
+message PrevChunkResponse {
+  string chunk = 1;
+}

@@ -1,0 +1,335 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "api/api.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AdhdReaderService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/adhdreader/addtext": {
+      "post": {
+        "operationId": "AdhdReaderService_AddText",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiAddTextResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apiAddTextRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AdhdReaderService"
+        ]
+      }
+    },
+    "/v1/adhdreader/listtexts": {
+      "get": {
+        "operationId": "AdhdReaderService_ListTexts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiListTextsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "AdhdReaderService"
+        ]
+      }
+    },
+    "/v1/adhdreader/nextchunk": {
+      "get": {
+        "operationId": "AdhdReaderService_NextChunk",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiNextChunkResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "AdhdReaderService"
+        ]
+      }
+    },
+    "/v1/adhdreader/prevchunk": {
+      "get": {
+        "operationId": "AdhdReaderService_PrevChunk",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiPrevChunkResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "AdhdReaderService"
+        ]
+      }
+    },
+    "/v1/adhdreader/selecttext/{textUuid}": {
+      "post": {
+        "operationId": "AdhdReaderService_SelectText",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiSelectTextResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "textUuid",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AdhdReaderService"
+        ]
+      }
+    },
+    "/v1/adhdreader/setchunksize/{chunkSize}": {
+      "post": {
+        "operationId": "AdhdReaderService_SetChunkSize",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiSetChunkSizeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chunkSize",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AdhdReaderService"
+        ]
+      }
+    },
+    "/v1/adhdreader/setpage": {
+      "post": {
+        "operationId": "AdhdReaderService_SetPage",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiSetPageResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apiSetPageRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AdhdReaderService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "apiAddTextRequest": {
+      "type": "object",
+      "properties": {
+        "textName": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "apiAddTextResponse": {
+      "type": "object",
+      "properties": {
+        "textUuid": {
+          "type": "string"
+        }
+      }
+    },
+    "apiListTextsResponse": {
+      "type": "object",
+      "properties": {
+        "texts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/apiTextWithCompletion"
+          }
+        }
+      }
+    },
+    "apiNextChunkResponse": {
+      "type": "object",
+      "properties": {
+        "chunk": {
+          "type": "string"
+        }
+      }
+    },
+    "apiPrevChunkResponse": {
+      "type": "object",
+      "properties": {
+        "chunk": {
+          "type": "string"
+        }
+      }
+    },
+    "apiSelectTextResponse": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "#/definitions/apiText"
+        }
+      }
+    },
+    "apiSetChunkSizeResponse": {
+      "type": "object"
+    },
+    "apiSetPageRequest": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "apiSetPageResponse": {
+      "type": "object"
+    },
+    "apiText": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "apiTextWithCompletion": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "completionPercent": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}

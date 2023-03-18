@@ -1,0 +1,18 @@
+version: v1
+breaking:
+  use:
+    - WIRE_JSON
+lint:
+  use:
+    - BASIC
+    - FILE_LOWER_SNAKE_CASE
+    - ENUM_NO_ALLOW_ALIAS
+    - IMPORT_NO_PUBLIC
+    - PACKAGE_SAME_DIRECTORY
+    - PACKAGE_DIRECTORY_MATCH
+  except:
+    - PACKAGE_DIRECTORY_MATCH
+
+deps:
+  - buf.build/googleapis/googleapis
+  - buf.build/grpc-ecosystem/grpc-gateway
