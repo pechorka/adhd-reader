@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pechorka/adhd-reader/internal/service"
-	"github.com/pechorka/adhd-reader/internal/storage"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/pechorka/adhd-reader/internal/service"
+	"github.com/pechorka/adhd-reader/internal/service/auth"
+	"github.com/pechorka/adhd-reader/internal/storage"
 
 	"github.com/pechorka/adhd-reader/cmd/tgbot/internal/bot"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
@@ -73,6 +75,7 @@ func run() error {
 	defer store.Close()
 
 	service := service.NewService(store, 500)
+	authService := auth.NewService(store)
 	msgQueue := queue.NewMessageQueue(queue.Config{})
 	fileLoader := fileloader.NewLoader(fileloader.Config{
 		MaxFileSize: defaultMaxFileSize,
@@ -80,6 +83,7 @@ func run() error {
 	b, err := bot.NewBot(bot.Config{
 		Token:       cfg.TgToken,
 		Service:     service,
+		AuthService: authService,
 		MsgQueue:    msgQueue,
 		FileLoader:  fileLoader,
 		MaxFileSize: defaultMaxFileSize,

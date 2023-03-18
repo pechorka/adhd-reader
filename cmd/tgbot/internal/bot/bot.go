@@ -31,8 +31,13 @@ const (
 	defaultMaxFileSize = 20 * 1024 * 1024 // 20 MB
 )
 
+type AuthService interface {
+	GeneratePassword(userID int64) (string, error)
+}
+
 type Bot struct {
 	service     *service.Service
+	authService AuthService
 	bot         *tgbotapi.BotAPI
 	msgQueue    *queue.MessageQueue
 	fileLoader  *fileloader.Loader
@@ -42,6 +47,7 @@ type Bot struct {
 type Config struct {
 	Token       string
 	Service     *service.Service
+	AuthService AuthService
 	MsgQueue    *queue.MessageQueue
 	FileLoader  *fileloader.Loader
 	MaxFileSize int
@@ -64,6 +70,7 @@ func NewBot(cfg Config) (*Bot, error) {
 
 	return &Bot{
 		service:     cfg.Service,
+		authService: cfg.AuthService,
 		bot:         bot,
 		msgQueue:    cfg.MsgQueue,
 		fileLoader:  cfg.FileLoader,
@@ -77,6 +84,9 @@ func validateConfig(cfg Config) error {
 	}
 	if cfg.Service == nil {
 		return fmt.Errorf("service is nil")
+	}
+	if cfg.AuthService == nil {
+		return fmt.Errorf("authService is nil")
 	}
 	if cfg.MsgQueue == nil {
 		return fmt.Errorf("msgQueue is nil")
@@ -139,6 +149,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.delete(msg)
 	case "help":
 		b.help(msg)
+	case "pass":
+		b.pass(msg)
 	default:
 		if cmd != "" {
 			log.Println("Unknown command: ", cmd)
@@ -185,7 +197,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 		b.replyError(cb.Message, "Failed to select text", err)
 		return
 	}
-	msg := fmt.Sprintf("Current selected text is: <code>%s</code>", currentText.Name)
+	msg := fmt.Sprintf("Current selected text is: %s", copiebleText(currentText.Name))
 	b.replyWithText(cb.Message, msg)
 	b.currentChunk(cb)
 }
@@ -224,7 +236,7 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 		b.replyWithText(cb.Message, "Can't go back, you are at the first chunk", nextBtn)
 		return
 	case service.ErrTextFinished:
-		b.replyWithText(cb.Message, fmt.Sprintf("Text <code>%s</code> is finished", currentText.Name), prevBtn, deleteBtn)
+		b.replyWithText(cb.Message, fmt.Sprintf("Text %s is finished", copiebleText(currentText.Name)), prevBtn, deleteBtn)
 	case nil:
 	default:
 		b.replyError(cb.Message, "Failed to get next chunk", err)
@@ -236,7 +248,7 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 		b.replyWithText(cb.Message, chunkText, nextBtn)
 	case service.ChunkTypeLast:
 		replyMsg := b.replyWithText(cb.Message, chunkText)
-		b.replyWithText(&replyMsg, fmt.Sprintf("This was the last chunk from the text <code>%s</code>", currentText.Name), prevBtn, deleteBtn)
+		b.replyWithText(&replyMsg, fmt.Sprintf("This was the last chunk from the text %s", copiebleText(currentText.Name)), prevBtn, deleteBtn)
 	default:
 		b.replyWithText(cb.Message, chunkText, prevBtn, nextBtn)
 	}
@@ -355,6 +367,15 @@ func (b *Bot) help(msg *tgbotapi.Message) {
 	b.replyWithText(msg, helpMsg)
 }
 
+func (b *Bot) pass(msg *tgbotapi.Message) {
+	password, err := b.authService.GeneratePassword(msg.From.ID)
+	if err != nil {
+		b.replyError(msg, "Failed to generate password", err)
+		return
+	}
+	b.replyWithText(msg, fmt.Sprintf("Insert this code in to the app: %s", copiebleText(password)))
+}
+
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	if msg.Document.FileSize != 0 && msg.Document.FileSize > b.maxFileSize {
 		b.replyWithText(msg, "File size is too big. Max file size is "+sizeconverter.HumanReadableSizeInMB(b.maxFileSize))
@@ -394,7 +415,7 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	}
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
-	b.replyWithText(msg, fmt.Sprintf("Text <code>%s</code> is saved", msg.Document.FileName), readBtn, deleteBtn)
+	b.replyWithText(msg, fmt.Sprintf("Text %s is saved", copiebleText(msg.Document.FileName)), readBtn, deleteBtn)
 }
 
 func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
@@ -414,7 +435,7 @@ func (b *Bot) onQueueFilled(userID int64, msgText string) {
 	}
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
-	b.sendToID(userID, fmt.Sprintf("Text <code>%s</code> is saved", textName), readBtn, deleteBtn)
+	b.sendToID(userID, fmt.Sprintf("Text %s is saved", copiebleText(textName)), readBtn, deleteBtn)
 }
 
 func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
@@ -465,4 +486,8 @@ func (b *Bot) send(msg tgbotapi.Chattable) tgbotapi.Message {
 		log.Println("error while sending message: ", err)
 	}
 	return replyMsg
+}
+
+func copiebleText(text string) string {
+	return "<code>" + text + "</code>"
 }

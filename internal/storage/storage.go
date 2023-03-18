@@ -17,6 +17,7 @@ const NotSelected = -1
 
 var (
 	bktUserInfo = []byte("user_info")
+	bktAuthInfo = []byte("auth_info")
 )
 
 var (
@@ -258,6 +259,32 @@ func (s *Storage) deleteTextBy(userID int64, predicate func(Text) bool) error {
 			return ErrNotFound
 		}
 		return putTexts(b, id, texts)
+	})
+}
+
+func (s *Storage) SavePassword(userID int64, password string) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktAuthInfo)
+		if err != nil {
+			return err
+		}
+		id := int64ToBytes(userID)
+		return b.Put(id, []byte(password))
+	})
+}
+
+func (s *Storage) PopPassword(userID int64, verifyFunc func(string) error) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktAuthInfo)
+		if b == nil {
+			return ErrNotFound
+		}
+		id := int64ToBytes(userID)
+		password := string(b.Get(id))
+		if err := verifyFunc(password); err != nil {
+			return err
+		}
+		return b.Delete(id)
 	})
 }
 
