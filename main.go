@@ -9,7 +9,7 @@ import (
 
 	"github.com/pechorka/adhd-reader/bot"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
-	"github.com/pechorka/adhd-reader/queue"
+	"github.com/pechorka/adhd-reader/pkg/queue"
 	"github.com/pechorka/adhd-reader/service"
 	"github.com/pechorka/adhd-reader/storage"
 )
