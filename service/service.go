@@ -15,24 +15,12 @@ var ErrTextNotUTF8 = errors.New("text is not valid utf8")
 
 const telegramMessageLengthLimit = 4096
 
-type Storage interface {
-	AddText(userID int64, newText storage.NewText) (string, error)
-	GetTexts(userID int64) (storage.UserTexts, error)
-	UpdateTexts(userID int64, updFunc storage.UpdateTextsFunc) error
-	DeleteTextByUUID(userID int64, uuid string) error
-	DeleteTextByName(userID int64, name string) error
-
-	SetChunkSize(userID int64, chunkSize int64) error
-	GetChunkSize(userID int64) (int64, error)
-	SelectChunk(userID int64, updFunc storage.SelectChunkFunc) (string, error)
-}
-
 type Service struct {
-	s         Storage
+	s         *storage.Storage
 	chunkSize int64
 }
 
-func NewService(s Storage, chunkSize int64) *Service {
+func NewService(s *storage.Storage, chunkSize int64) *Service {
 	return &Service{s: s, chunkSize: chunkSize}
 }
 
@@ -73,35 +61,48 @@ func (s *Service) AddText(userID int64, textName, text string) (string, error) {
 	return s.s.AddText(userID, data)
 }
 
-func (s *Service) ListTexts(userID int64) ([]storage.Text, error) {
+type TextWithCompletion struct {
+	UUID              string
+	Name              string
+	CompletionPercent int
+}
+
+func (s *Service) ListTexts(userID int64) ([]TextWithCompletion, error) {
 	texts, err := s.s.GetTexts(userID)
 	if err != nil {
 		return nil, err
 	}
-	return texts.Texts, nil
+	result := make([]TextWithCompletion, 0, len(texts))
+	for _, t := range texts {
+		result = append(result, TextWithCompletion{
+			UUID:              t.UUID,
+			Name:              t.Name,
+			CompletionPercent: calculateCompletionPercent(t),
+		})
+	}
+	return result, nil
 }
 
-func (s *Service) CurrentText(userID int64) (storage.Text, error) {
-	texts, err := s.s.GetTexts(userID)
-	if err != nil {
-		return storage.Text{}, err
+func calculateCompletionPercent(text storage.TextWithChunkInfo) int {
+	if text.TotalChunks-1 <= 0 || text.CurrentChunk == storage.NotSelected {
+		return 0
 	}
-	if texts.Current == storage.NotSelected {
-		return storage.Text{}, ErrTextNotSelected
-	}
-	return texts.Texts[texts.Current], nil
+	return int(float64(text.CurrentChunk) / float64(text.TotalChunks-1) * 100)
 }
 
-func (s *Service) SelectText(userID int64, textUUID string) error {
-	return s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
+func (s *Service) SelectText(userID int64, textUUID string) (storage.Text, error) {
+	var text storage.Text
+	err := s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
 		for i, t := range texts.Texts {
 			if t.UUID == textUUID {
 				texts.Current = i
+				text = t
 				return nil
 			}
 		}
 		return errors.Errorf("text with uuid %s not found", textUUID)
 	})
+	return text, err
 }
 
 func (s *Service) SetPage(userID, page int64) error {

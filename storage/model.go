@@ -11,6 +11,13 @@ type Text struct {
 	BucketName []byte
 }
 
+type TextWithChunkInfo struct {
+	UUID         string
+	Name         string
+	CurrentChunk int64
+	TotalChunks  int64
+}
+
 type NewText struct {
 	Name      string
 	Text      string

@@ -40,15 +40,20 @@ func TestService_SelectText(t *testing.T) {
 	text3ID, err := srv.AddText(userID, "text3Name", "text3")
 	require.NoError(t, err)
 
-	err = srv.SelectText(userID, "wrong uuid")
+	_, err = srv.SelectText(userID, "wrong uuid")
 	require.Error(t, err)
 
-	err = srv.SelectText(userID, text1ID)
+	text1, err := srv.SelectText(userID, text1ID)
 	require.NoError(t, err)
-	err = srv.SelectText(userID, text2ID)
+	require.Equal(t, "text1Name", text1.Name)
+
+	text2, err := srv.SelectText(userID, text2ID)
 	require.NoError(t, err)
-	err = srv.SelectText(userID, text3ID)
+	require.Equal(t, "text2Name", text2.Name)
+
+	text3, err := srv.SelectText(userID, text3ID)
 	require.NoError(t, err)
+	require.Equal(t, "text3Name", text3.Name)
 }
 
 func TestService_DeleteTextByUUID(t *testing.T) {
@@ -122,7 +127,7 @@ func TestService_PageNavigation(t *testing.T) {
 		Third chunk.Fourth chunk.`,
 	)
 	require.NoError(t, err)
-	err = srv.SelectText(userID, textID)
+	_, err = srv.SelectText(userID, textID)
 	require.NoError(t, err)
 
 	chunks := []string{
@@ -162,7 +167,7 @@ func TestService_SetPage(t *testing.T) {
 	err = srv.SetPage(userID, 0)
 	require.Error(t, err)
 
-	err = srv.SelectText(userID, textID)
+	_, err = srv.SelectText(userID, textID)
 	require.NoError(t, err)
 
 	// page out of range

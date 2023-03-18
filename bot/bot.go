@@ -176,16 +176,12 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 
 func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 	textUUID := strings.TrimPrefix(cb.Data, textSelect)
-	err := b.service.SelectText(cb.From.ID, textUUID)
+	currentText, err := b.service.SelectText(cb.From.ID, textUUID)
 	if err != nil {
 		b.replyError(cb.Message, "Failed to select text", err)
 		return
 	}
-	msg := "Text selected successfully"
-	currentText, err := b.service.CurrentText(cb.From.ID)
-	if err == nil {
-		msg = fmt.Sprintf("Current selected text is: <code>%s</code>", currentText.Name)
-	}
+	msg := fmt.Sprintf("Current selected text is: <code>%s</code>", currentText.Name)
 	b.replyWithText(cb.Message, msg)
 	b.currentChunk(cb)
 }
@@ -290,9 +286,21 @@ func (b *Bot) list(msg *tgbotapi.Message) {
 	// reply with button for each text and save text index in callback data
 	var buttons []tgbotapi.InlineKeyboardButton
 	for _, t := range texts {
-		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(t.Name, textSelect+t.UUID))
+		btnText := completionPercentString(t.CompletionPercent) + " " + t.Name
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(btnText, textSelect+t.UUID))
 	}
 	b.replyWithText(msg, "Select text to read", buttons...)
+}
+
+func completionPercentString(percent int) string {
+	switch percent {
+	case 0:
+		return "🆕"
+	case 100:
+		return "✅"
+	default:
+		return fmt.Sprintf("(%d%%)", percent)
+	}
 }
 
 func (b *Bot) page(msg *tgbotapi.Message) {

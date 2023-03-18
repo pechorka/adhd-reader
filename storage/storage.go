@@ -102,7 +102,8 @@ func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
 		if err = textBucket.Put(currentChunkKey, int64ToBytes(NotSelected)); err != nil {
 			return err
 		}
-		if err = textBucket.Put(totalChunksKey, int64ToBytes(int64(len(newText.Chunks)))); err != nil {
+		totalChunks := int64(len(newText.Chunks))
+		if err = textBucket.Put(totalChunksKey, int64ToBytes(totalChunks)); err != nil {
 			return err
 		}
 		for i, chunk := range newText.Chunks {
@@ -115,18 +116,22 @@ func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
 	return textUUID, err
 }
 
-func (s *Storage) GetTexts(id int64) (UserTexts, error) {
-	var texts UserTexts
+func (s *Storage) GetTexts(id int64) ([]TextWithChunkInfo, error) {
+	var result []TextWithChunkInfo
 	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bktUserInfo)
 		if b == nil {
 			return nil
 		}
 		var err error
-		texts, err = getTexts(b, textsId(id))
+		texts, err := getTexts(b, textsId(id))
+		if err != nil {
+			return err
+		}
+		result, err = enrichTexts(tx, texts)
 		return err
 	})
-	return texts, err
+	return result, err
 }
 
 type UpdateTextsFunc func(*UserTexts) error
@@ -272,6 +277,26 @@ func getTexts(b *bolt.Bucket, id []byte) (texts UserTexts, err error) {
 		return defaultUserTexts(), err
 	}
 	return texts, nil
+}
+
+// enrichTexts enriches texts with current chunk
+func enrichTexts(tx *bolt.Tx, texts UserTexts) ([]TextWithChunkInfo, error) {
+	result := make([]TextWithChunkInfo, 0, len(texts.Texts))
+	for _, text := range texts.Texts {
+		textBucket := tx.Bucket(text.BucketName)
+		if textBucket == nil {
+			return nil, errors.New("unexpected error: text bucket not found")
+		}
+		curChunk := bytesToInt64(textBucket.Get(currentChunkKey))
+		totalChunks := bytesToInt64(textBucket.Get(totalChunksKey))
+		result = append(result, TextWithChunkInfo{
+			UUID:         text.UUID,
+			Name:         text.Name,
+			CurrentChunk: curChunk,
+			TotalChunks:  totalChunks,
+		})
+	}
+	return result, nil
 }
 
 func putTexts(b *bolt.Bucket, id []byte, texts UserTexts) error {
