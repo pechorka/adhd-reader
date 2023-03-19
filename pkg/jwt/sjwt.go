@@ -1,11 +1,9 @@
-package sauth
+package jwt
 
 import (
-	"context"
 	"crypto/rsa"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
 )
 
@@ -27,15 +25,8 @@ func New(cfg Config) *Service {
 	}
 }
 
-type jwtClaims struct {
-	UserID         int64 `json:"userID"`
-	IsRefreshToken bool  `json:"isRefreshToken"`
-	Rand           int64 `json:"rand"`
-	jwt.StandardClaims
-}
-
 // GenerateTokens creates tokens for a user.
-func (s *Service) GenerateTokens(ctx context.Context, userID int64) (*TokenResponse, error) {
+func (s *Service) GenerateTokens(userID int64) (*TokenResponse, error) {
 	tokAccess, expiresAt, err := genTokenAccess(userID, s.c.TokenAccessTTL, s.c.SignKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "signing access token")
@@ -57,7 +48,7 @@ func (s *Service) GenerateTokens(ctx context.Context, userID int64) (*TokenRespo
 	}, nil
 }
 
-func (s *Service) extractValidateRefreshTok(ctx context.Context, str string) (*jwtClaims, error) {
+func (s *Service) extractValidateRefreshTok(str string) (*jwtClaims, error) {
 	// TODO validate that user has this AccessToken as last used accessTok
 	//
 	// If this refreshToken is valid, but user already refreshed this accessToken
@@ -77,22 +68,22 @@ func (s *Service) extractValidateRefreshTok(ctx context.Context, str string) (*j
 	return claims, nil
 }
 
-func (s *Service) Refresh(ctx context.Context, p TokenPair, userID int64) (*TokenResponse, error) {
-	claims, err := s.extractValidateRefreshTok(ctx, p.Refresh)
+func (s *Service) Refresh(refreshToken string) (*TokenResponse, error) {
+	claims, err := s.extractValidateRefreshTok(refreshToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid refresh token")
 	}
 
-	tokAccess, expAt, err := genTokenAccess(userID, s.c.TokenAccessTTL, s.c.SignKey)
+	tokAccess, expAt, err := genTokenAccess(claims.UserID, s.c.TokenAccessTTL, s.c.SignKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "signing access token")
 	}
 
 	ret := TokenResponse{
-		UserID: userID,
+		UserID: claims.UserID,
 		Pair: TokenPair{
 			Access:  tokAccess,
-			Refresh: p.Refresh,
+			Refresh: refreshToken,
 		},
 		AccessExpiresAt: expAt,
 		IssuedAt:        time.Now(),
@@ -104,11 +95,11 @@ func (s *Service) Refresh(ctx context.Context, p TokenPair, userID int64) (*Toke
 		return &ret, nil
 	}
 
-	ret.Pair.Refresh, err = genTokenRefresh(userID, s.c.TokenRefreshTTL, s.c.SignKey)
+	ret.Pair.Refresh, err = genTokenRefresh(claims.UserID, s.c.TokenRefreshTTL, s.c.SignKey)
 	return &ret, errors.Wrap(err, "signing refresh token")
 }
 
-func (s *Service) Check(ctx context.Context, accessToken string) (int64, error) {
+func (s *Service) Check(accessToken string) (int64, error) {
 	cl, err := jwtValidate(accessToken, s.c.ValidateKey)
 	if err != nil {
 		return 0, err

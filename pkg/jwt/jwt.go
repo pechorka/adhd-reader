@@ -1,4 +1,4 @@
-package sauth
+package jwt
 
 import (
 	"crypto/rsa"
@@ -10,9 +10,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	jwtIssuer = "beyond100-auth"
-)
+const jwtIssuer = "adhd-reader"
+
+type jwtClaims struct {
+	UserID         int64 `json:"userID"`
+	IsRefreshToken bool  `json:"isRefreshToken"`
+	Rand           int64 `json:"rand"`
+	jwt.StandardClaims
+}
 
 var randSrc = rand.New(saferand.NewSource(time.Now().UnixNano()))
 

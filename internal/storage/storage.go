@@ -269,23 +269,26 @@ func (s *Storage) SavePassword(userID int64, password string) error {
 			return err
 		}
 		id := int64ToBytes(userID)
-		return b.Put(id, []byte(password))
+		return b.Put([]byte(password), id)
 	})
 }
 
-func (s *Storage) PopPassword(userID int64, verifyFunc func(string) error) error {
-	return s.db.Update(func(tx *bolt.Tx) error {
+func (s *Storage) PopUserID(password string) (int64, error) {
+	var userID int64
+	err := s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bktAuthInfo)
 		if b == nil {
 			return ErrNotFound
 		}
-		id := int64ToBytes(userID)
-		password := string(b.Get(id))
-		if err := verifyFunc(password); err != nil {
-			return err
+		key := []byte(password)
+		rawUserID := b.Get(key)
+		if rawUserID == nil {
+			return ErrNotFound
 		}
-		return b.Delete(id)
+		userID = bytesToInt64(rawUserID)
+		return b.Delete(key)
 	})
+	return userID, err
 }
 
 // helper functions

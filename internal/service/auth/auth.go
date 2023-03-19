@@ -9,7 +9,7 @@ import (
 
 type Storage interface {
 	SavePassword(userID int64, password string) error
-	PopPassword(userID int64, verifyFunc func(string) error) error
+	PopUserID(password string) (int64, error)
 }
 
 type Service struct {
@@ -33,16 +33,11 @@ func (s *Service) GeneratePassword(userID int64) (string, error) {
 	return password, nil
 }
 
-func (s *Service) VerifyPassword(userID int64, password string) error {
-	return s.store.PopPassword(userID, func(storedPassword string) error {
-		if password != storedPassword {
-			return errors.New("invalid password")
-		}
-		return nil
-	})
+func (s *Service) VerifyPassword(password string) (int64, error) {
+	return s.store.PopUserID(password)
 }
 
-// generatePassword generates a random string and signs it with the private key.
+// generatePassword generates a random string and encodes it using base64.
 func (s *Service) generatePassword() (password string, err error) {
 	// Generate a random string of length 32
 	randomBytes := make([]byte, 32)
