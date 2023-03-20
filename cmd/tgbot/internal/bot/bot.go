@@ -16,6 +16,7 @@ import (
 	"github.com/pechorka/adhd-reader/pkg/contenttype"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/queue"
+	"github.com/pechorka/adhd-reader/pkg/runeslice"
 	"github.com/pechorka/adhd-reader/pkg/sizeconverter"
 )
 
@@ -397,19 +398,18 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
-	b.msgQueue.Add(msg.From.ID, msg.Text)
+	text := msg.Text
+	if text == "" {
+		text = msg.Caption
+	}
+	b.msgQueue.Add(msg.From.ID, text)
 }
 
 func (b *Bot) onQueueFilled(userID int64, msgText string) {
-	// first line is text name
-	textName, _, ok := strings.Cut(msgText, "\n")
-	if !ok {
-		b.sendToID(userID, "Text name not found (first line should be text name)")
-		return
-	}
+	textName := runeslice.NRunes(msgText, 64)
 	textID, err := b.service.AddText(userID, textName, msgText)
 	if err != nil {
-		b.sendToID(userID, "Faled to save text: "+err.Error())
+		b.sendToID(userID, "Failed to save text: "+err.Error())
 		return
 	}
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
