@@ -62,12 +62,6 @@ func (s *Service) AddText(userID int64, textName, text string) (string, error) {
 	return s.s.AddText(userID, data)
 }
 
-type TextWithCompletion struct {
-	UUID              string
-	Name              string
-	CompletionPercent int
-}
-
 func (s *Service) ListTexts(userID int64) ([]TextWithCompletion, error) {
 	texts, err := s.s.GetTexts(userID)
 	if err != nil {
@@ -91,7 +85,7 @@ func calculateCompletionPercent(text storage.TextWithChunkInfo) int {
 	return int(float64(text.CurrentChunk) / float64(text.TotalChunks-1) * 100)
 }
 
-func (s *Service) SelectText(userID int64, textUUID string) (storage.Text, error) {
+func (s *Service) SelectText(userID int64, textUUID string) (Text, error) {
 	var text storage.Text
 	err := s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
 		for i, t := range texts.Texts {
@@ -103,7 +97,7 @@ func (s *Service) SelectText(userID int64, textUUID string) (storage.Text, error
 		}
 		return errors.Errorf("text with uuid %s not found", textUUID)
 	})
-	return text, err
+	return mapText(text), err
 }
 
 func (s *Service) SetPage(userID, page int64) error {
@@ -116,7 +110,7 @@ func (s *Service) SetPage(userID, page int64) error {
 	return err
 }
 
-func (s *Service) NextChunk(userID int64) (storage.Text, string, ChunkType, error) {
+func (s *Service) NextChunk(userID int64) (Text, string, ChunkType, error) {
 	return s.selectChunk(userID, func(_ storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
 		if curChunk >= totalChunks-1 {
 			return 0, ErrTextFinished
@@ -125,7 +119,7 @@ func (s *Service) NextChunk(userID int64) (storage.Text, string, ChunkType, erro
 	})
 }
 
-func (s *Service) PrevChunk(userID int64) (storage.Text, string, ChunkType, error) {
+func (s *Service) PrevChunk(userID int64) (Text, string, ChunkType, error) {
 	return s.selectChunk(userID, func(_ storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
 		if curChunk <= 0 {
 			return 0, ErrFirstChunk
@@ -134,7 +128,7 @@ func (s *Service) PrevChunk(userID int64) (storage.Text, string, ChunkType, erro
 	})
 }
 
-func (s *Service) CurrentOrFirstChunk(userID int64) (storage.Text, string, ChunkType, error) {
+func (s *Service) CurrentOrFirstChunk(userID int64) (Text, string, ChunkType, error) {
 	return s.selectChunk(userID, func(_ storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
 		if curChunk == storage.NotSelected {
 			return 0, nil // return first chunk
@@ -143,14 +137,7 @@ func (s *Service) CurrentOrFirstChunk(userID int64) (storage.Text, string, Chunk
 	})
 }
 
-type ChunkType string
-
-const (
-	ChunkTypeFirst ChunkType = "first"
-	ChunkTypeLast  ChunkType = "last"
-)
-
-func (s *Service) selectChunk(userID int64, selectChunk storage.SelectChunkFunc) (storage.Text, string, ChunkType, error) {
+func (s *Service) selectChunk(userID int64, selectChunk storage.SelectChunkFunc) (Text, string, ChunkType, error) {
 	var chunkType ChunkType
 	var curText storage.Text
 	text, err := s.s.SelectChunk(userID, func(text storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
@@ -167,7 +154,14 @@ func (s *Service) selectChunk(userID int64, selectChunk storage.SelectChunkFunc)
 		}
 		return nextChunk, nil
 	})
-	return curText, text, chunkType, err
+	return mapText(curText), text, chunkType, err
+}
+
+func mapText(t storage.Text) Text {
+	return Text{
+		UUID: t.UUID,
+		Name: t.Name,
+	}
 }
 
 func (s *Service) DeleteTextByUUID(userID int64, textUUID string) error {

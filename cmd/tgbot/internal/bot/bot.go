@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/pechorka/adhd-reader/internal/service"
-	"github.com/pechorka/adhd-reader/internal/storage"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pechorka/adhd-reader/pkg/contenttype"
@@ -224,7 +223,7 @@ func (b *Bot) currentChunk(cb *tgbotapi.CallbackQuery) {
 	b.chunkReply(cb, b.service.CurrentOrFirstChunk)
 }
 
-type chunkSelectorFunc func(userID int64) (storage.Text, string, service.ChunkType, error)
+type chunkSelectorFunc func(userID int64) (service.Text, string, service.ChunkType, error)
 
 func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelectorFunc) {
 	currentText, chunkText, chunkType, err := chunkSelector(cb.From.ID)
