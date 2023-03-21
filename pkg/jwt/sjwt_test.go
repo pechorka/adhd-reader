@@ -50,7 +50,7 @@ func TestAuth__properTTL(t *testing.T) {
 	so.NotNil(err, "refresh token should error out .Check() (only access tokens should work)")
 
 	prevPair := *rsp
-	rsp, err = author.Refresh(userID, rsp.Pair.Refresh)
+	rsp, err = author.Refresh(rsp.Pair.Refresh)
 	so.Nil(err, "refresh should work successfully")
 	so.Equal(prevPair.Pair.Refresh, rsp.Pair.Refresh, "shouldn't recreate new refresh token")
 	so.NotEqual(prevPair.Pair.Access, rsp.Pair.Access, "should recreate any access token")
@@ -61,7 +61,7 @@ func TestAuth__properTTL(t *testing.T) {
 	so.NotNil(err, "refresh token should expire by now")
 
 	prevPair = *rsp
-	rsp, err = author.Refresh(userID, rsp.Pair.Refresh)
+	rsp, err = author.Refresh(rsp.Pair.Refresh)
 	so.Nil(err)
 	so.NotEqual(prevPair.Pair.Refresh, rsp.Pair.Refresh, "should recreate refresh token close to expiration")
 	so.NotEqual(prevPair.Pair.Access, rsp.Pair.Access, "should recreate any access token")
