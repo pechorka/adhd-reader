@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package api;
+
+import "google/api/annotations.proto";
+import "google/type/datetime.proto";
+
+option go_package = "github.com/pechorka/adhd-reader/generated/api;api";
+
+service AuthService {
+  rpc Auth (AuthRequest) returns (AuthResponse) {
+    option (google.api.http) = {
+      post: "/v1/adhdreader/auth"
+      body: "*"
+    };
+  }
+  rpc Refresh (RefreshRequest) returns (RefreshResponse) {
+    option (google.api.http) = {
+      post: "/v1/adhdreader/refresh"
+      body: "*"
+    };
+  }
+}
+
+message TokenPair {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+message TokenInfo {
+  TokenPair token_pair = 1;
+  google.type.DateTime issued_at = 2;
+  google.type.DateTime access_expires_at = 3;
+}
+
+message AuthRequest {
+  string password = 1;
+}
+
+message AuthResponse {
+  TokenInfo token_info = 1;
+}
+
+message RefreshRequest {
+  string refresh_token = 1;
+}
+
+message RefreshResponse {
+  TokenInfo token_info = 1;
+}

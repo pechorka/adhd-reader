@@ -291,6 +291,41 @@ func (s *Storage) PopUserID(password string) (int64, error) {
 	return userID, err
 }
 
+func (s *Storage) GetText(userID int64, textUUID string) (*FullTextInfo, error) {
+	result := &FullTextInfo{}
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktUserInfo)
+		if b == nil {
+			return ErrNotFound
+		}
+		id := textsId(userID)
+		texts, err := getTexts(b, id)
+		if err != nil {
+			return err
+		}
+		curText, ok := texts.getByUUID(textUUID)
+		if !ok {
+			return ErrNotFound
+		}
+		textBucket := tx.Bucket(curText.BucketName)
+		if textBucket == nil { // should not happen
+			return errors.New("unexpected error: text bucket not found")
+		}
+		result.CurrentChunk = bytesToInt64(textBucket.Get(currentChunkKey))
+		totalChunks := bytesToInt64(textBucket.Get(totalChunksKey))
+		result.Chunks = make([]string, 0, int(totalChunks))
+		for i := 0; i < int(totalChunks); i++ {
+			chunk := string(textBucket.Get(int64ToBytes(int64(i))))
+			result.Chunks = append(result.Chunks, chunk)
+		}
+		result.Name = curText.Name
+		result.UUID = curText.UUID
+		result.FullText = string(textBucket.Get(fullTextKey))
+		return nil
+	})
+	return result, err
+}
+
 // helper functions
 
 func textsId(id int64) []byte {
