@@ -189,7 +189,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 	textUUID := strings.TrimPrefix(cb.Data, textSelect)
 	currentText, err := b.service.SelectText(cb.From.ID, textUUID)
 	if err != nil {
-		b.replyError(cb.Message, "Failed to select text", err)
+		b.replyErrorWithI18n(cb.Message, errorOnTextSelectMsgId, err)
 		return
 	}
 	b.replyToUserWithI18nWithArgs(cb.From, onTextSelectMsgId, map[string]string{
@@ -202,7 +202,7 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 	textUUID := strings.TrimPrefix(cb.Data, deleteText)
 	err := b.service.DeleteTextByUUID(cb.From.ID, textUUID)
 	if err != nil {
-		b.replyError(cb.Message, "Failed to delete text", err)
+		b.replyErrorWithI18n(cb.Message, errorOnTextDeleteMsgId, err)
 		return
 	}
 	b.replyToUserWithI18n(cb.From, onTextDeletedMsgId)
@@ -224,9 +224,9 @@ type chunkSelectorFunc func(userID int64) (storage.Text, string, service.ChunkTy
 
 func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelectorFunc) {
 	currentText, chunkText, chunkType, err := chunkSelector(cb.From.ID)
-	prevBtn := tgbotapi.NewInlineKeyboardButtonData("Prev", prevChunk)
-	nextBtn := tgbotapi.NewInlineKeyboardButtonData("Next", nextChunk)
-	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete text", deleteText+currentText.UUID)
+	prevBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, previousButtonMsgId), prevChunk)
+	nextBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, nextButtonMsgId), nextChunk)
+	deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, deleteButtonMsgId), deleteText+currentText.UUID)
 	switch err {
 	case service.ErrFirstChunk:
 		b.replyWithText(cb.Message, "Can't go back, you are at the first chunk", nextBtn)
@@ -431,12 +431,16 @@ func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbota
 	return b.sendMsg(msg, buttons...)
 }
 
+func (b *Bot) replyErrorWithI18n(msg *tgbotapi.Message, id string, err error, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	return b.replyError(msg, b.getTextWithArgs(msg.From, id, nil), err, buttons...)
+}
+
 func (b *Bot) replyToMsgWithI18n(msg *tgbotapi.Message, id string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	return b.replyToMsgWithI18nWithArgs(msg, id, nil, buttons...)
 }
 
 func (b *Bot) replyToMsgWithI18nWithArgs(msg *tgbotapi.Message, id string, args map[string]string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
-	return b.replyWithText(msg, b.getText(msg.From, id, args), buttons...)
+	return b.replyWithText(msg, b.getTextWithArgs(msg.From, id, args), buttons...)
 }
 
 func (b *Bot) replyToUserWithI18n(from *tgbotapi.User, id string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
@@ -444,10 +448,14 @@ func (b *Bot) replyToUserWithI18n(from *tgbotapi.User, id string, buttons ...tgb
 }
 
 func (b *Bot) replyToUserWithI18nWithArgs(from *tgbotapi.User, id string, args map[string]string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
-	return b.sendToUser(from.ID, b.getText(from, id, args), buttons...)
+	return b.sendToUser(from.ID, b.getTextWithArgs(from, id, args), buttons...)
 }
 
-func (b *Bot) getText(from *tgbotapi.User, textID string, args map[string]string) string {
+func (b *Bot) getText(from *tgbotapi.User, textID string) string {
+	return b.getTextWithArgs(from, textID, nil)
+}
+
+func (b *Bot) getTextWithArgs(from *tgbotapi.User, textID string, args map[string]string) string {
 	langCode := getLanguageCode(from)
 	var (
 		text string

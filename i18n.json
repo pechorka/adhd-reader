@@ -1,14 +1,28 @@
 {
     "en": {
         "panic": "Something went wrong, please try again later",
+        "error_on_text_select": "Failed to select text",
+        "error_on_text_delete": "Failed to delete text",
 
         "on_text_select": "Current selected text is: <code>{{text_name}}</code>",
-        "on_text_deleted": "Text deleted. Let's choose something to read: /list"
+        "on_text_deleted": "Text deleted. Let's choose something to read: /list",
+        
+
+        "previous_button": "Prev",
+        "next_button": "Next",
+        "delete_button": "Delete text"
     },
     "ru": {
         "panic": "Что-то пошло не так, попробуйте позже",
+        "error_on_text_select": "Не удалось выбрать текст",
+        "error_on_text_delete": "Не удалось удалить текст",
 
         "on_text_select": "Текущий выбранный текст: <code>{{text_name}}</code>",
-        "on_text_deleted": "Текст удален. Выберите что-нибудь для чтения: /list"
+        "on_text_deleted": "Текст удален. Выберите что-нибудь для чтения: /list",
+        
+
+        "previous_button": "Назад",
+        "next_button": "Вперед",
+        "delete_button": "Удалить текст"
     }
 }
