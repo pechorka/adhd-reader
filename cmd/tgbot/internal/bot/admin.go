@@ -9,7 +9,7 @@ import (
 )
 
 func (b *Bot) analytics(msg *tgbotapi.Message) {
-	analytics, err := b.service.Analytics()
+	userAnalytics, totalAnalytics, err := b.service.Analytics()
 	if err != nil {
 		b.replyError(msg, "could not fetch analytics", err)
 		return
@@ -23,7 +23,7 @@ func (b *Bot) analytics(msg *tgbotapi.Message) {
 		b.replyError(msg, "could not write csv header", err)
 		return
 	}
-	for _, ua := range analytics {
+	for _, ua := range userAnalytics {
 		row := []string{
 			fmt.Sprintf("%d", ua.UserID),
 			fmt.Sprintf("%d", ua.ChunkSize),
@@ -44,4 +44,16 @@ func (b *Bot) analytics(msg *tgbotapi.Message) {
 
 	doc := tgbotapi.FileBytes{Name: "user_analytics.csv", Bytes: buffer.Bytes()}
 	b.send(tgbotapi.NewDocument(msg.Chat.ID, doc))
+	b.send(tgbotapi.NewMessage(msg.Chat.ID,
+		fmt.Sprintf(`
+Total number of users: %d
+Number of users with >0 texts added: %d
+Total number of texts added: %d
+Average ChunkSize among users: %d`,
+			totalAnalytics.TotalNumberOfUsers,
+			totalAnalytics.NumberOfUsersWithTexts,
+			totalAnalytics.TotalNumberOfTexts,
+			totalAnalytics.AverageChunkSize,
+		),
+	))
 }

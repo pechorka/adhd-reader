@@ -189,12 +189,22 @@ type UserAnalytics struct {
 	CurrentTextName     string
 }
 
-func (s *Service) Analytics() ([]UserAnalytics, error) {
+type TotalAnalytics struct {
+	TotalNumberOfUsers     int64
+	NumberOfUsersWithTexts int64
+	TotalNumberOfTexts     int64
+	AverageChunkSize       int64
+}
+
+func (s *Service) Analytics() ([]UserAnalytics, *TotalAnalytics, error) {
 	rawAnalytics, err := s.s.Analytics()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	result := make([]UserAnalytics, 0, len(rawAnalytics))
+	var totalChunkSize int64
+	var usersWithTexts int64
+	var totalNumberOfTexts int64
 	for _, userAnalytics := range rawAnalytics {
 		var totalChunks int64
 		var maxCurrentChunk int64 = storage.NotSelected
@@ -220,16 +230,37 @@ func (s *Service) Analytics() ([]UserAnalytics, error) {
 		if chunkSize == 0 {
 			chunkSize = s.chunkSize
 		}
+		totalChunkSize += chunkSize
+		if len(userAnalytics.Texts) > 0 {
+			usersWithTexts++
+		}
+		totalNumberOfTexts += int64(len(userAnalytics.Texts))
+		var avgTotalChunks int64
+		if len(userAnalytics.Texts) > 0 {
+			avgTotalChunks = totalChunks / int64(len(userAnalytics.Texts))
+		}
 		result = append(result, UserAnalytics{
 			UserID:              userAnalytics.UserID,
 			ChunkSize:           chunkSize,
 			TotalTextCount:      userAnalytics.TotalTextCount,
-			AvgTotalChunks:      totalChunks / int64(len(userAnalytics.Texts)),
+			AvgTotalChunks:      avgTotalChunks,
 			MaxCurrentChunk:     maxCurrentChunk,
 			StartedTextsCount:   startedTextsCount,
 			CompletedTextsCount: completedTextsCount,
 			CurrentTextName:     currentTextName,
 		})
 	}
-	return result, nil
+	numberOfUsers := int64(len(result))
+	var averageChunkSize int64
+	if numberOfUsers > 0 {
+		averageChunkSize = totalChunkSize / numberOfUsers
+	}
+
+	totalAnalytics := &TotalAnalytics{
+		TotalNumberOfUsers:     numberOfUsers,
+		NumberOfUsersWithTexts: usersWithTexts,
+		TotalNumberOfTexts:     totalNumberOfTexts,
+		AverageChunkSize:       averageChunkSize,
+	}
+	return result, totalAnalytics, nil
 }
