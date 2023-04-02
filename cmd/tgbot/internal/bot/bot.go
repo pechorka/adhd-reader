@@ -202,7 +202,7 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 	textUUID := strings.TrimPrefix(cb.Data, deleteText)
 	err := b.service.DeleteTextByUUID(cb.From.ID, textUUID)
 	if err != nil {
-		b.replyErrorWithI18n(cb.Message, errorOnTextDeleteMsgId, err)
+		b.replyErrorToUserWithI18n(cb.From, errorOnTextDeleteMsgId, err)
 		return
 	}
 	b.replyToUserWithI18n(cb.From, onTextDeletedMsgId)
@@ -341,22 +341,22 @@ func (b *Bot) chunk(msg *tgbotapi.Message) {
 	strChunk := msg.CommandArguments()
 	chunk, err := strconv.ParseInt(strings.TrimSpace(strChunk), 10, 64)
 	if err != nil {
-		b.replyError(msg, "Failed to parse chunk", err)
+		b.replyErrorWithI18n(msg, errorOnParsingChunkSizeMsgId, err)
 		return
 	}
 	err = b.service.SetChunkSize(msg.From.ID, chunk)
 	if err != nil {
-		b.replyError(msg, "Failed to set chunk size", err)
+		b.replyErrorWithI18n(msg, errorOnSettingChunkSizeMsgId, err)
 		return
 	}
-	b.replyWithText(msg, "Chunk size set. But keep in mind that text gets chunked on save and currently they are not re-chunked on chunk size change")
+	b.replyToMsgWithI18n(msg, chunkSizeSetMsgId)
 }
 
 func (b *Bot) delete(msg *tgbotapi.Message) {
 	textName := strings.TrimSpace(msg.CommandArguments())
 	err := b.service.DeleteTextByName(msg.From.ID, textName)
 	if err != nil {
-		b.replyError(msg, "Failed to delete text", err)
+		b.replyErrorWithI18n(msg, errorOnDeletingTextMsgId, err)
 		return
 	}
 	b.replyWithText(msg, textDeletedMsg)

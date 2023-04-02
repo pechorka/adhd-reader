@@ -8,6 +8,10 @@
         "error_on_parsing_page": "Failed to parse page",
         "error_on_setting_page_no_text_selected": "Failed to set page, no text selected",
         "error_on_setting_page": "Failed to set page",
+        "error_on_parsing_chunk_size": "Failed to parse chunk size",
+        "error_on_setting_chunk_size": "Failed to set chunk size",
+        "error_on_deleting_text": "Failed to delete text",
+        "error_on_file_upload_too_big": "File size is too big. Max file size is {{max_file_size}} ",
 
         "warning_first_chunk_cant_go_back":"Can't go back, you are at the first chunk",
         "warning_no_texts": "No texts found, please add some texts to read",
@@ -18,6 +22,7 @@
         "last_chunk": "This was the last chunk from the text <code>{{text_name}}</code>",
         "on_list": "Select some text to read:",
         "page_set": "Page set",
+        "chunk_size_set": "Chunk size set. But keep in mind that text gets chunked on save and currently they are not re-chunked on chunk size change",
 
         "previous_button": "Prev",
         "next_button": "Next",
@@ -32,6 +37,10 @@
         "error_on_parsing_page": "Не удалось разобрать номер страницы",
         "error_on_setting_page_no_text_selected": "Не удалось установить номер страницы, текст не выбран",
         "error_on_setting_page": "Не удалось установить номер страницы",
+        "error_on_parsing_chunk_size": "Не удалось разобрать размер фрагмента",
+        "error_on_setting_chunk_size": "Не удалось установить размер фрагмента", 
+        "error_on_deleting_text": "Не удалось удалить текст",   
+        "error_on_file_upload_too_big": "Размер файла слишком большой. Максимальный размер файла {{max_file_size}} ",
 
         "warning_first_chunk_cant_go_back":"Нельзя вернуться назад, вы на первом фрагменте",
         "warning_no_texts": "Тексты не найдены, добавьте тексты для чтения",
@@ -42,6 +51,7 @@
         "last_chunk": "Это был последний фрагмент текста <code>{{text_name}}</code>",
         "on_list": "Выберите текст для чтения:",
         "page_set": "Страница установлена",
+        "chunk_size_set": "Размер фрагмента установлен. Но имейте в виду, что текст разбивается на фрагменты при сохранении, и в настоящее время тексты не разбиваются повторно при изменении размера фрагмента",
         
 
         "previous_button": "Назад",

@@ -17,6 +17,10 @@ const (
 	errorOnParsingPageMsgId               = "error_on_parsing_page"
 	errorOnSettingPageNoTextSelectedMsgId = "error_on_setting_page_no_text_selected"
 	errorOnSettingPageMsgId               = "error_on_setting_page"
+	errorOnParsingChunkSizeMsgId          = "error_on_parsing_chunk_size"
+	errorOnSettingChunkSizeMsgId          = "error_on_setting_chunk_size"
+	errorOnDeletingTextMsgId              = "error_on_deleting_text"
+	errorOnFileUploadTooBigMsgId          = "error_on_file_upload_too_big"
 )
 
 const (
@@ -26,6 +30,7 @@ const (
 	lastChunkMsgId     = "last_chunk"
 	onListMsgId        = "on_list"
 	pageSetMsgId       = "page_set"
+	chunkSizeSetMsgId  = "chunk_size_set"
 )
 
 const (
