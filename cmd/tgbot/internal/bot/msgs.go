@@ -9,20 +9,34 @@ const startFileName = "Your.attention.span.is.shrinking.txt"
 
 // error messages
 const (
-	panicMsgId             = "panic"
-	errorOnTextSelectMsgId = "error_on_text_select"
-	errorOnTextDeleteMsgId = "error_on_text_delete"
+	panicMsgId                            = "panic"
+	errorOnTextSelectMsgId                = "error_on_text_select"
+	errorOnTextDeleteMsgId                = "error_on_text_delete"
+	erroroOnGettingNextChunk              = "error_on_getting_next_chunk"
+	errorOnListMsgId                      = "error_on_list"
+	errorOnParsingPageMsgId               = "error_on_parsing_page"
+	errorOnSettingPageNoTextSelectedMsgId = "error_on_setting_page_no_text_selected"
+	errorOnSettingPageMsgId               = "error_on_setting_page"
 )
 
 const (
 	onTextSelectMsgId  = "on_text_select"
 	onTextDeletedMsgId = "on_text_deleted"
+	textFinishedMsgId  = "text_finished"
+	lastChunkMsgId     = "last_chunk"
+	onListMsgId        = "on_list"
+	pageSetMsgId       = "page_set"
 )
 
 const (
 	previousButtonMsgId = "previous_button"
 	nextButtonMsgId     = "next_button"
 	deleteButtonMsgId   = "delete_button"
+)
+
+const (
+	warningFirstChunkCantGoBackMsgId = "warning_first_chunk_cant_go_back"
+	warningNoTextsMsgId              = "warning_no_texts"
 )
 
 // onboarding messages

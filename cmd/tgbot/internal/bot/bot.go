@@ -189,7 +189,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 	textUUID := strings.TrimPrefix(cb.Data, textSelect)
 	currentText, err := b.service.SelectText(cb.From.ID, textUUID)
 	if err != nil {
-		b.replyErrorWithI18n(cb.Message, errorOnTextSelectMsgId, err)
+		b.replyErrorToUserWithI18n(cb.From, errorOnTextSelectMsgId, err)
 		return
 	}
 	b.replyToUserWithI18nWithArgs(cb.From, onTextSelectMsgId, map[string]string{
@@ -229,13 +229,15 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, deleteButtonMsgId), deleteText+currentText.UUID)
 	switch err {
 	case service.ErrFirstChunk:
-		b.replyWithText(cb.Message, "Can't go back, you are at the first chunk", nextBtn)
+		b.replyToUserWithI18n(cb.From, warningFirstChunkCantGoBackMsgId, nextBtn)
 		return
 	case service.ErrTextFinished:
-		b.replyWithText(cb.Message, fmt.Sprintf("Text <code>%s</code> is finished", currentText.Name), prevBtn, deleteBtn)
+		b.replyToUserWithI18nWithArgs(cb.From, textFinishedMsgId, map[string]string{
+			"text_name": currentText.Name,
+		}, prevBtn, deleteBtn)
 	case nil:
 	default:
-		b.replyError(cb.Message, "Failed to get next chunk", err)
+		b.replyErrorToUserWithI18n(cb.From, erroroOnGettingNextChunk, err)
 		return
 	}
 
@@ -243,8 +245,9 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 	case service.ChunkTypeFirst:
 		b.replyWithText(cb.Message, chunkText, nextBtn)
 	case service.ChunkTypeLast:
-		replyMsg := b.replyWithText(cb.Message, chunkText)
-		b.replyWithText(&replyMsg, fmt.Sprintf("This was the last chunk from the text <code>%s</code>", currentText.Name), prevBtn, deleteBtn)
+		b.replyToUserWithI18nWithArgs(cb.From, lastChunkMsgId, map[string]string{
+			"text_name": currentText.Name,
+		}, prevBtn, deleteBtn)
 	default:
 		b.replyWithText(cb.Message, chunkText, prevBtn, nextBtn)
 	}
@@ -288,11 +291,11 @@ func (b *Bot) start(msg *tgbotapi.Message) {
 func (b *Bot) list(msg *tgbotapi.Message) {
 	texts, err := b.service.ListTexts(msg.From.ID)
 	if err != nil {
-		b.replyError(msg, "Failed to list texts", err)
+		b.replyErrorWithI18n(msg, errorOnListMsgId, err)
 		return
 	}
 	if len(texts) == 0 {
-		b.replyWithText(msg, "No texts")
+		b.replyErrorWithI18n(msg, warningNoTextsMsgId, err)
 		return
 	}
 	// reply with button for each text and save text index in callback data
@@ -301,7 +304,7 @@ func (b *Bot) list(msg *tgbotapi.Message) {
 		btnText := completionPercentString(t.CompletionPercent) + " " + t.Name
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(btnText, textSelect+t.UUID))
 	}
-	b.replyWithText(msg, "Select text to read", buttons...)
+	b.replyToMsgWithI18n(msg, onListMsgId, buttons...)
 }
 
 func completionPercentString(percent int) string {
@@ -319,19 +322,19 @@ func (b *Bot) page(msg *tgbotapi.Message) {
 	strPage := msg.CommandArguments()
 	page, err := strconv.ParseInt(strings.TrimSpace(strPage), 10, 64)
 	if err != nil {
-		b.replyError(msg, "Failed to parse page", err)
+		b.replyErrorWithI18n(msg, errorOnParsingPageMsgId, err)
 		return
 	}
 	err = b.service.SetPage(msg.From.ID, page)
 	if err != nil {
 		if err == service.ErrTextNotSelected {
-			b.replyWithText(msg, "Text not selected")
+			b.replyToMsgWithI18n(msg, errorOnSettingPageNoTextSelectedMsgId)
 			return
 		}
-		b.replyError(msg, "Failed to set page", err)
+		b.replyErrorWithI18n(msg, errorOnSettingPageMsgId, err)
 		return
 	}
-	b.replyWithText(msg, "Page set")
+	b.replyToMsgWithI18n(msg, pageSetMsgId)
 }
 
 func (b *Bot) chunk(msg *tgbotapi.Message) {
@@ -435,6 +438,10 @@ func (b *Bot) replyErrorWithI18n(msg *tgbotapi.Message, id string, err error, bu
 	return b.replyError(msg, b.getTextWithArgs(msg.From, id, nil), err, buttons...)
 }
 
+func (b *Bot) replyErrorToUserWithI18n(from *tgbotapi.User, id string, err error, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	return b.replyErrorToUser(from, b.getTextWithArgs(from, id, nil), err, buttons...)
+}
+
 func (b *Bot) replyToMsgWithI18n(msg *tgbotapi.Message, id string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	return b.replyToMsgWithI18nWithArgs(msg, id, nil, buttons...)
 }
@@ -476,6 +483,14 @@ func (b *Bot) getTextWithArgs(from *tgbotapi.User, textID string, args map[strin
 func (b *Bot) replyError(to *tgbotapi.Message, text string, err error, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	msg := tgbotapi.NewMessage(to.Chat.ID, text+": "+err.Error())
 	msg.ReplyToMessageID = to.MessageID
+	if err != nil {
+		log.Println(err.Error())
+	}
+	return b.sendMsg(msg, buttons...)
+}
+
+func (b *Bot) replyErrorToUser(from *tgbotapi.User, text string, err error, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	msg := tgbotapi.NewMessage(from.ID, text+": "+err.Error())
 	if err != nil {
 		log.Println(err.Error())
 	}

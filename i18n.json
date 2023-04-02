@@ -3,10 +3,21 @@
         "panic": "Something went wrong, please try again later",
         "error_on_text_select": "Failed to select text",
         "error_on_text_delete": "Failed to delete text",
+        "error_on_getting_next_chunk": "Failed to get next chunk",
+        "error_on_list": "Failed to get list of texts",
+        "error_on_parsing_page": "Failed to parse page",
+        "error_on_setting_page_no_text_selected": "Failed to set page, no text selected",
+        "error_on_setting_page": "Failed to set page",
+
+        "warning_first_chunk_cant_go_back":"Can't go back, you are at the first chunk",
+        "warning_no_texts": "No texts found, please add some texts to read",
 
         "on_text_select": "Current selected text is: <code>{{text_name}}</code>",
         "on_text_deleted": "Text deleted. Let's choose something to read: /list",
-        
+        "text_finished": "Text <code>{{text_name}}</code> is finished",
+        "last_chunk": "This was the last chunk from the text <code>{{text_name}}</code>",
+        "on_list": "Select some text to read:",
+        "page_set": "Page set",
 
         "previous_button": "Prev",
         "next_button": "Next",
@@ -16,9 +27,21 @@
         "panic": "Что-то пошло не так, попробуйте позже",
         "error_on_text_select": "Не удалось выбрать текст",
         "error_on_text_delete": "Не удалось удалить текст",
+        "error_on_getting_next_chunk": "Не удалось получить следующий фрагмент",
+        "error_on_list": "Не удалось получить список текстов",
+        "error_on_parsing_page": "Не удалось разобрать номер страницы",
+        "error_on_setting_page_no_text_selected": "Не удалось установить номер страницы, текст не выбран",
+        "error_on_setting_page": "Не удалось установить номер страницы",
+
+        "warning_first_chunk_cant_go_back":"Нельзя вернуться назад, вы на первом фрагменте",
+        "warning_no_texts": "Тексты не найдены, добавьте тексты для чтения",
 
         "on_text_select": "Текущий выбранный текст: <code>{{text_name}}</code>",
         "on_text_deleted": "Текст удален. Выберите что-нибудь для чтения: /list",
+        "text_finished": "Текст <code>{{text_name}}</code> закончен",
+        "last_chunk": "Это был последний фрагмент текста <code>{{text_name}}</code>",
+        "on_list": "Выберите текст для чтения:",
+        "page_set": "Страница установлена",
         
 
         "previous_button": "Назад",
