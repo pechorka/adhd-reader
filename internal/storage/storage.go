@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -259,6 +260,64 @@ func (s *Storage) deleteTextBy(userID int64, predicate func(Text) bool) error {
 		}
 		return putTexts(b, id, texts)
 	})
+}
+
+func (s *Storage) Analytics() ([]UserAnalytics, error) {
+	var result []UserAnalytics
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktUserInfo)
+		if b == nil {
+			return nil
+		}
+		userChunkSize := make(map[int64]int64)
+		userTexts := make(map[int64]UserTexts)
+		err := b.ForEach(func(k, v []byte) error {
+			switch {
+			case bytes.HasPrefix(k, []byte("chunk-size-")):
+				userID := bytesToInt64(k[11:])
+				userChunkSize[userID] = bytesToInt64(v)
+			case bytes.HasPrefix(k, []byte("texts-")):
+				userID := bytesToInt64(k[6:])
+				texts, err := getTexts(b, k)
+				if err != nil {
+					return err
+				}
+				userTexts[userID] = texts
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		result = make([]UserAnalytics, 0, len(userChunkSize))
+		for userID, texts := range userTexts {
+			textsAnalytics := make([]TextWithChunkInfo, 0, len(texts.Texts))
+			for _, text := range texts.Texts {
+				textBucket := tx.Bucket(text.BucketName)
+				if textBucket == nil { // should not happen
+					continue
+				}
+				curChunk := bytesToInt64(textBucket.Get(currentChunkKey))
+				totalChunks := bytesToInt64(textBucket.Get(totalChunksKey))
+				textsAnalytics = append(textsAnalytics, TextWithChunkInfo{
+					UUID:         text.UUID,
+					Name:         text.Name,
+					TotalChunks:  totalChunks,
+					CurrentChunk: curChunk,
+				})
+			}
+			result = append(result, UserAnalytics{
+				UserID:         userID,
+				ChunkSize:      userChunkSize[userID],
+				TotalTextCount: int64(len(texts.Texts)),
+				CurrentText:    texts.Current,
+				Texts:          textsAnalytics,
+			})
+		}
+		return nil
+	})
+	return result, err
 }
 
 // helper functions

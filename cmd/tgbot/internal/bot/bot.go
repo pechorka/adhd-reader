@@ -148,6 +148,9 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.help(msg)
 	default:
 		if cmd != "" {
+			if b.handleAdminMsg(msg) {
+				return
+			}
 			log.Println("Unknown command: ", cmd)
 		}
 		b.saveTextFromMessage(msg)
@@ -162,6 +165,25 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		delete - delete text, pass text name as argument
 		help - troubleshooting and support
 	*/
+}
+
+var admins = map[int64]struct{}{
+	373512635: {},
+	310116972: {},
+}
+
+func (b *Bot) handleAdminMsg(msg *tgbotapi.Message) bool {
+	if _, ok := admins[msg.From.ID]; !ok {
+		return false
+	}
+	switch cmd := msg.Command(); cmd {
+	case "analytics":
+		b.analytics(msg)
+	default:
+		return false
+	}
+
+	return true
 }
 
 func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
