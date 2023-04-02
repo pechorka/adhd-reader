@@ -177,3 +177,90 @@ func (s *Service) DeleteTextByUUID(userID int64, textUUID string) error {
 func (s *Service) DeleteTextByName(userID int64, textUUID string) error {
 	return s.s.DeleteTextByName(userID, textUUID)
 }
+
+type UserAnalytics struct {
+	UserID              int64
+	ChunkSize           int64
+	TotalTextCount      int64
+	AvgTotalChunks      int64
+	MaxCurrentChunk     int64
+	StartedTextsCount   int64
+	CompletedTextsCount int64
+	CurrentTextName     string
+}
+
+type TotalAnalytics struct {
+	TotalNumberOfUsers     int64
+	NumberOfUsersWithTexts int64
+	TotalNumberOfTexts     int64
+	AverageChunkSize       int64
+}
+
+func (s *Service) Analytics() ([]UserAnalytics, *TotalAnalytics, error) {
+	rawAnalytics, err := s.s.Analytics()
+	if err != nil {
+		return nil, nil, err
+	}
+	result := make([]UserAnalytics, 0, len(rawAnalytics))
+	var totalChunkSize int64
+	var usersWithTexts int64
+	var totalNumberOfTexts int64
+	for _, userAnalytics := range rawAnalytics {
+		var totalChunks int64
+		var maxCurrentChunk int64 = storage.NotSelected
+		var startedTextsCount int64
+		var completedTextsCount int64
+		for _, text := range userAnalytics.Texts {
+			totalChunks += text.TotalChunks
+			if text.CurrentChunk > maxCurrentChunk {
+				maxCurrentChunk = text.CurrentChunk
+			}
+			if text.CurrentChunk != storage.NotSelected {
+				startedTextsCount++
+			}
+			if text.CurrentChunk == text.TotalChunks-1 {
+				completedTextsCount++
+			}
+		}
+		currentTextName := "Not selected"
+		if userAnalytics.CurrentText != storage.NotSelected {
+			currentTextName = userAnalytics.Texts[userAnalytics.CurrentText].Name
+		}
+		chunkSize := userAnalytics.ChunkSize
+		if chunkSize == 0 {
+			chunkSize = s.chunkSize
+		}
+		totalChunkSize += chunkSize
+		if len(userAnalytics.Texts) > 0 {
+			usersWithTexts++
+		}
+		totalNumberOfTexts += int64(len(userAnalytics.Texts))
+		var avgTotalChunks int64
+		if len(userAnalytics.Texts) > 0 {
+			avgTotalChunks = totalChunks / int64(len(userAnalytics.Texts))
+		}
+		result = append(result, UserAnalytics{
+			UserID:              userAnalytics.UserID,
+			ChunkSize:           chunkSize,
+			TotalTextCount:      userAnalytics.TotalTextCount,
+			AvgTotalChunks:      avgTotalChunks,
+			MaxCurrentChunk:     maxCurrentChunk,
+			StartedTextsCount:   startedTextsCount,
+			CompletedTextsCount: completedTextsCount,
+			CurrentTextName:     currentTextName,
+		})
+	}
+	numberOfUsers := int64(len(result))
+	var averageChunkSize int64
+	if numberOfUsers > 0 {
+		averageChunkSize = totalChunkSize / numberOfUsers
+	}
+
+	totalAnalytics := &TotalAnalytics{
+		TotalNumberOfUsers:     numberOfUsers,
+		NumberOfUsersWithTexts: usersWithTexts,
+		TotalNumberOfTexts:     totalNumberOfTexts,
+		AverageChunkSize:       averageChunkSize,
+	}
+	return result, totalAnalytics, nil
+}

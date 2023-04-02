@@ -24,3 +24,11 @@ type NewText struct {
 	Chunks    []string
 	ChunkSize int64
 }
+
+type UserAnalytics struct {
+	UserID         int64
+	ChunkSize      int64
+	TotalTextCount int64
+	CurrentText    int
+	Texts          []TextWithChunkInfo
+}
