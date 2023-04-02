@@ -9,12 +9,20 @@ const startFileName = "Your.attention.span.is.shrinking.txt"
 
 // error messages
 const (
-	panicMsgId = "panic"
+	panicMsgId             = "panic"
+	errorOnTextSelectMsgId = "error_on_text_select"
+	errorOnTextDeleteMsgId = "error_on_text_delete"
 )
 
 const (
 	onTextSelectMsgId  = "on_text_select"
 	onTextDeletedMsgId = "on_text_deleted"
+)
+
+const (
+	previousButtonMsgId = "previous_button"
+	nextButtonMsgId     = "next_button"
+	deleteButtonMsgId   = "delete_button"
 )
 
 // onboarding messages
