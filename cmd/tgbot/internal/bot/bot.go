@@ -224,7 +224,7 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 	textUUID := strings.TrimPrefix(cb.Data, deleteText)
 	err := b.service.DeleteTextByUUID(cb.From.ID, textUUID)
 	if err != nil {
-		b.replyErrorWithI18n(cb.Message, errorOnTextDeleteMsgId, err)
+		b.replyErrorToUserWithI18n(cb.From, errorOnTextDeleteMsgId, err)
 		return
 	}
 	b.replyToUserWithI18n(cb.From, onTextDeletedMsgId)
@@ -317,7 +317,7 @@ func (b *Bot) list(msg *tgbotapi.Message) {
 		return
 	}
 	if len(texts) == 0 {
-		b.replyErrorWithI18n(msg, warningNoTextsMsgId, err)
+		b.replyToMsgWithI18n(msg, warningNoTextsMsgId)
 		return
 	}
 	// reply with button for each text and save text index in callback data
