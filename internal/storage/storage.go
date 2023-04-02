@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -269,15 +270,15 @@ func (s *Storage) Analytics() ([]UserAnalytics, error) {
 		if b == nil {
 			return nil
 		}
-		userChunkSize := make(map[int64]int64)
-		userTexts := make(map[int64]UserTexts)
+		userChunkSize := make(map[string]int64)
+		userTexts := make(map[string]UserTexts)
 		err := b.ForEach(func(k, v []byte) error {
 			switch {
 			case bytes.HasPrefix(k, []byte("chunk-size-")):
-				userID := bytesToInt64(k[11:])
+				userID := string(k[11:])
 				userChunkSize[userID] = bytesToInt64(v)
 			case bytes.HasPrefix(k, []byte("texts-")):
-				userID := bytesToInt64(k[6:])
+				userID := string(k[6:])
 				texts, err := getTexts(b, k)
 				if err != nil {
 					return err
@@ -291,7 +292,7 @@ func (s *Storage) Analytics() ([]UserAnalytics, error) {
 		}
 
 		result = make([]UserAnalytics, 0, len(userChunkSize))
-		for userID, texts := range userTexts {
+		for strUserID, texts := range userTexts {
 			textsAnalytics := make([]TextWithChunkInfo, 0, len(texts.Texts))
 			for _, text := range texts.Texts {
 				textBucket := tx.Bucket(text.BucketName)
@@ -307,9 +308,13 @@ func (s *Storage) Analytics() ([]UserAnalytics, error) {
 					CurrentChunk: curChunk,
 				})
 			}
+			userID, err := strconv.ParseInt(strUserID, 10, 64)
+			if err != nil { // should not happen
+				return errors.Wrap(err, "failed to parse user id")
+			}
 			result = append(result, UserAnalytics{
 				UserID:         userID,
-				ChunkSize:      userChunkSize[userID],
+				ChunkSize:      userChunkSize[strUserID],
 				TotalTextCount: int64(len(texts.Texts)),
 				CurrentText:    texts.Current,
 				Texts:          textsAnalytics,
