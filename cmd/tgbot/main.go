@@ -3,15 +3,18 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pechorka/adhd-reader/internal/service"
-	"github.com/pechorka/adhd-reader/internal/storage"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/pechorka/adhd-reader/internal/service"
+	"github.com/pechorka/adhd-reader/internal/storage"
+
 	"github.com/pechorka/adhd-reader/cmd/tgbot/internal/bot"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
+	"github.com/pechorka/adhd-reader/pkg/i18n"
 	"github.com/pechorka/adhd-reader/pkg/queue"
+	"github.com/pechorka/adhd-reader/pkg/watcher"
 )
 
 // todo move to config
@@ -53,8 +56,12 @@ func main() {
 
 func run() error {
 	cfgPath := "./cfg.json"
+	i18nPath := "./i18n.json"
 	if len(os.Args) > 1 {
 		cfgPath = os.Args[1]
+	}
+	if len(os.Args) > 2 {
+		i18nPath = os.Args[2]
 	}
 	cfg, err := readCfg(cfgPath)
 	if err != nil {
@@ -72,6 +79,13 @@ func run() error {
 	}
 	defer store.Close()
 
+	i18nService := i18n.New()
+	watcher, err := watcher.LoadAndWatch(i18nPath, i18nService)
+	if err != nil {
+		return err
+	}
+	defer watcher.Close()
+
 	service := service.NewService(store, 500)
 	msgQueue := queue.NewMessageQueue(queue.Config{})
 	fileLoader := fileloader.NewLoader(fileloader.Config{
@@ -82,6 +96,7 @@ func run() error {
 		Service:     service,
 		MsgQueue:    msgQueue,
 		FileLoader:  fileLoader,
+		I18n:        i18nService,
 		MaxFileSize: defaultMaxFileSize,
 	})
 	if err != nil {

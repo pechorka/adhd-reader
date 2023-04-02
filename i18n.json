@@ -1,0 +1,14 @@
+{
+    "en": {
+        "panic": "Something went wrong, please try again later",
+
+        "on_text_select": "Current selected text is: <code>{{text_name}}</code>",
+        "on_text_deleted": "Text deleted. Let's choose something to read: /list"
+    },
+    "ru": {
+        "panic": "Что-то пошло не так, попробуйте позже",
+
+        "on_text_select": "Текущий выбранный текст: <code>{{text_name}}</code>",
+        "on_text_deleted": "Текст удален. Выберите что-нибудь для чтения: /list"
+    }
+}

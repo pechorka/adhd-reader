@@ -7,6 +7,16 @@ var startFile []byte
 
 const startFileName = "Your.attention.span.is.shrinking.txt"
 
+// error messages
+const (
+	panicMsgId = "panic"
+)
+
+const (
+	onTextSelectMsgId  = "on_text_select"
+	onTextDeletedMsgId = "on_text_deleted"
+)
+
 // onboarding messages
 
 const (

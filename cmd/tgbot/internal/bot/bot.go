@@ -15,6 +15,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pechorka/adhd-reader/pkg/contenttype"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
+	"github.com/pechorka/adhd-reader/pkg/i18n"
 	"github.com/pechorka/adhd-reader/pkg/queue"
 	"github.com/pechorka/adhd-reader/pkg/runeslice"
 	"github.com/pechorka/adhd-reader/pkg/sizeconverter"
@@ -36,6 +37,7 @@ type Bot struct {
 	bot         *tgbotapi.BotAPI
 	msgQueue    *queue.MessageQueue
 	fileLoader  *fileloader.Loader
+	i18n        *i18n.Localies
 	maxFileSize int
 }
 
@@ -44,6 +46,7 @@ type Config struct {
 	Service     *service.Service
 	MsgQueue    *queue.MessageQueue
 	FileLoader  *fileloader.Loader
+	I18n        *i18n.Localies
 	MaxFileSize int
 }
 
@@ -67,6 +70,7 @@ func NewBot(cfg Config) (*Bot, error) {
 		bot:         bot,
 		msgQueue:    cfg.MsgQueue,
 		fileLoader:  cfg.FileLoader,
+		i18n:        cfg.I18n,
 		maxFileSize: cfg.MaxFileSize,
 	}, nil
 }
@@ -83,6 +87,9 @@ func validateConfig(cfg Config) error {
 	}
 	if cfg.FileLoader == nil {
 		return fmt.Errorf("fileLoader is nil")
+	}
+	if cfg.I18n == nil {
+		return fmt.Errorf("i18n is nil")
 	}
 	return nil
 }
@@ -110,16 +117,16 @@ func (b *Bot) Stop() {
 	b.msgQueue.Stop()
 }
 
-func (b *Bot) handlePanic(msg *tgbotapi.Message) {
+func (b *Bot) handlePanic(user *tgbotapi.User) {
 	if rec := recover(); rec != nil {
-		b.replyWithText(msg, "Something went wrong, please try again later")
-		b.sendMsg(tgbotapi.NewMessage(373512635, fmt.Sprintf("Я запаниковал: %v", rec)))
+		b.replyToUserWithI18n(user, panicMsgId)
+		b.reportError(fmt.Sprintf("Я запаниковал: %v", rec))
 		log.Println("Panic: ", rec, "Stack: ", string(debug.Stack()))
 	}
 }
 
 func (b *Bot) handleMsg(msg *tgbotapi.Message) {
-	defer b.handlePanic(msg)
+	defer b.handlePanic(msg.From)
 
 	if msg.Document != nil {
 		b.saveTextFromDocument(msg)
@@ -158,7 +165,7 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
-	defer b.handlePanic(cb.Message)
+	defer b.handlePanic(cb.From)
 
 	switch {
 	case strings.HasPrefix(cb.Data, textSelect):
@@ -185,8 +192,9 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 		b.replyError(cb.Message, "Failed to select text", err)
 		return
 	}
-	msg := fmt.Sprintf("Current selected text is: <code>%s</code>", currentText.Name)
-	b.replyWithText(cb.Message, msg)
+	b.replyToUserWithI18nWithArgs(cb.From, onTextSelectMsgId, map[string]string{
+		"text_name": currentText.Name,
+	})
 	b.currentChunk(cb)
 }
 
@@ -197,7 +205,7 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 		b.replyError(cb.Message, "Failed to delete text", err)
 		return
 	}
-	b.replyWithText(cb.Message, textDeletedMsg)
+	b.replyToUserWithI18n(cb.From, onTextDeletedMsgId)
 }
 
 func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
@@ -244,24 +252,24 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 
 func (b *Bot) start(msg *tgbotapi.Message) {
 	go func() { // todo: stop flow on other commands???
-		b.sendToID(msg.From.ID, firstMsg)
+		b.sendToUser(msg.From.ID, firstMsg)
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
-		b.sendToID(msg.From.ID, secondMsg)
+		b.sendToUser(msg.From.ID, secondMsg)
 		b.sendTyping(msg)
 		time.Sleep(5 * time.Second)
 
-		b.sendToID(msg.From.ID, thirdMsg)
+		b.sendToUser(msg.From.ID, thirdMsg)
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
-		b.sendToID(msg.From.ID, fourthMsg)
-		b.sendToID(msg.From.ID, fifthMsg)
+		b.sendToUser(msg.From.ID, fourthMsg)
+		b.sendToUser(msg.From.ID, fifthMsg)
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
-		b.sendToID(msg.From.ID, sixthMsg)
+		b.sendToUser(msg.From.ID, sixthMsg)
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
@@ -273,7 +281,7 @@ func (b *Bot) start(msg *tgbotapi.Message) {
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
-		b.sendToID(msg.From.ID, eighthMsg)
+		b.sendToUser(msg.From.ID, eighthMsg)
 	}()
 }
 
@@ -409,18 +417,52 @@ func (b *Bot) onQueueFilled(userID int64, msgText string) {
 	textName := runeslice.NRunes(msgText, 64)
 	textID, err := b.service.AddText(userID, textName, msgText)
 	if err != nil {
-		b.sendToID(userID, "Failed to save text: "+err.Error())
+		b.sendToUser(userID, "Failed to save text: "+err.Error())
 		return
 	}
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
-	b.sendToID(userID, fmt.Sprintf("Text <code>%s</code> is saved", textName), readBtn, deleteBtn)
+	b.sendToUser(userID, fmt.Sprintf("Text <code>%s</code> is saved", textName), readBtn, deleteBtn)
 }
 
 func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	msg := tgbotapi.NewMessage(to.Chat.ID, text)
 	msg.ReplyToMessageID = to.MessageID
 	return b.sendMsg(msg, buttons...)
+}
+
+func (b *Bot) replyToMsgWithI18n(msg *tgbotapi.Message, id string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	return b.replyToMsgWithI18nWithArgs(msg, id, nil, buttons...)
+}
+
+func (b *Bot) replyToMsgWithI18nWithArgs(msg *tgbotapi.Message, id string, args map[string]string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	return b.replyWithText(msg, b.getText(msg.From, id, args), buttons...)
+}
+
+func (b *Bot) replyToUserWithI18n(from *tgbotapi.User, id string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	return b.replyToUserWithI18nWithArgs(from, id, nil, buttons...)
+}
+
+func (b *Bot) replyToUserWithI18nWithArgs(from *tgbotapi.User, id string, args map[string]string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	return b.sendToUser(from.ID, b.getText(from, id, args), buttons...)
+}
+
+func (b *Bot) getText(from *tgbotapi.User, textID string, args map[string]string) string {
+	langCode := getLanguageCode(from)
+	var (
+		text string
+		err  error
+	)
+	if len(args) == 0 {
+		text, err = b.i18n.Get(langCode, textID)
+	} else {
+		text, err = b.i18n.GetWithArgs(langCode, textID, args)
+	}
+	if err != nil {
+		b.reportError(fmt.Sprintf("failed to get i18n text for id %s, locale %s: %v", textID, langCode, err))
+		text = "Something went wrong"
+	}
+	return text
 }
 
 func (b *Bot) replyError(to *tgbotapi.Message, text string, err error, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
@@ -432,7 +474,7 @@ func (b *Bot) replyError(to *tgbotapi.Message, text string, err error, buttons .
 	return b.sendMsg(msg, buttons...)
 }
 
-func (b *Bot) sendToID(userID int64, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+func (b *Bot) sendToUser(userID int64, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	msg := tgbotapi.NewMessage(userID, text)
 	return b.sendMsg(msg, buttons...)
 }
@@ -465,4 +507,19 @@ func (b *Bot) send(msg tgbotapi.Chattable) tgbotapi.Message {
 		log.Println("error while sending message: ", err)
 	}
 	return replyMsg
+}
+
+func (b *Bot) reportError(errText string) {
+	const reporter = 373512635
+	go func() {
+		b.sendMsg(tgbotapi.NewMessage(reporter, errText))
+	}()
+}
+
+func getLanguageCode(user *tgbotapi.User) string {
+	lang := "en"
+	if user.LanguageCode == "ru" {
+		lang = "ru"
+	}
+	return lang
 }
