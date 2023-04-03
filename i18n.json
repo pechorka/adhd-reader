@@ -34,6 +34,7 @@
         "next_button": "Next",
         "delete_button": "Delete text",
         "read_button": "Read",
+        "reread_button": "Reread",
 
         "onboarding_first_msg": "Welcome to ADHD Reading Bot! 📚📖\nWe live busy lives. It's hard to find time to read books or articles or even posts in Telegram channels...\nBut it's easy to find this 1 minute to look at this cutie cat picture in Telegram 😍",
         "onboarding_second_msg":"This bot can help you chunk books, articles, or long-read posts into smaller segments.    \n1️⃣ Easy to digest. 🤤   \n       Choose your own size of segments. The default is only 500 symbols. (1 short paragraph)   \n2️⃣ Easy to start reading. 🚀    \n        Right in Telegram, next to cute kitties.    \n3️⃣ Easy to stop reading 🛑    \n      No more remembering which paragraph you stopped at    \n4️⃣ Easy to share! 🤝   \n       No more excruciating selecting of words, just Forward whole chunk to your Telegram contacts or a group",
@@ -80,6 +81,7 @@
         "next_button": "Вперед",
         "delete_button": "Удалить",
         "read_button": "Читать",
+        "reread_button": "Перечитать",
 
         "onboarding_first_msg": "Добро пожаловать в ADHD Reading Bot! 📚📖\n Наша жизнь полна дел.\n Трудно найти время на чтение книг, статей или даже постов в каналах... Но легко найти одну минуту, чтобы посмотреть на эту милую фотографию котика в Telegram 😍",
         "onboarding_second_msg":"Этот бот может помочь вам разбить книги, статьи или длинные посты на более мелкие фрагменты.\n 1️⃣ Легко усваивать. 🤤\n Выберите свой собственный размер фрагментов. По умолчанию это всего лишь 500 символов. (1 короткий параграф)\n 2️⃣ Легко начать чтение. 🚀\n Прямо в Telegram, рядом с милыми котиками.\n 3️⃣ Легко прекратить чтение. 🛑\n Больше не нужно запоминать, на каком параграфе вы остановились\n 4️⃣ Легко делиться! 🤝\n Больше не нужно мучительно выделять цитату, просто перешлите весь фрагмент своим контактам в Telegram или группе",

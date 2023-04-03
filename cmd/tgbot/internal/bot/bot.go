@@ -249,6 +249,8 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 	prevBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, previousButtonMsgId), prevChunk)
 	nextBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, nextButtonMsgId), nextChunk)
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, deleteButtonMsgId), deleteText+currentText.UUID)
+	rereadBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, rereadButtonMsgId), textSelect+currentText.UUID)
+	// #29 TODO code for reread button
 	switch err {
 	case service.ErrFirstChunk:
 		b.replyToUserWithI18n(cb.From, warningFirstChunkCantGoBackMsgId, nextBtn)
@@ -269,7 +271,7 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 	case service.ChunkTypeLast:
 		b.replyToUserWithI18nWithArgs(cb.From, lastChunkMsgId, map[string]string{
 			"text_name": currentText.Name,
-		}, prevBtn, deleteBtn)
+		}, prevBtn, deleteBtn, rereadBtn)
 	default:
 		b.replyWithText(cb.Message, chunkText, prevBtn, nextBtn)
 	}

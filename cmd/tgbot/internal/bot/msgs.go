@@ -44,6 +44,7 @@ const (
 	nextButtonMsgId     = "next_button"
 	deleteButtonMsgId   = "delete_button"
 	readButtonMsgId     = "read_button"
+	rereadButtonMsgId   = "reread_button"
 )
 
 const (
