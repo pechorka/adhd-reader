@@ -381,7 +381,7 @@ func (b *Bot) delete(msg *tgbotapi.Message) {
 		b.replyErrorWithI18n(msg, errorOnDeletingTextMsgId, err)
 		return
 	}
-	b.replyWithText(msg, textDeletedMsg)
+	b.replyToMsgWithI18n(msg, onTextDeletedMsgId)
 }
 
 func (b *Bot) help(msg *tgbotapi.Message) {
