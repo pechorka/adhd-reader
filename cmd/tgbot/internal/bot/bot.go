@@ -390,44 +390,51 @@ func (b *Bot) help(msg *tgbotapi.Message) {
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	if msg.Document.FileSize != 0 && msg.Document.FileSize > b.maxFileSize {
-		b.replyWithText(msg, "File size is too big. Max file size is "+sizeconverter.HumanReadableSizeInMB(b.maxFileSize))
+		b.replyToMsgWithI18nWithArgs(msg, errorOnFileUploadTooBigMsgId, map[string]string{
+			"max_file_size": sizeconverter.HumanReadableSizeInMB(b.maxFileSize),
+		})
 		return
 	}
 	if !contenttype.IsPlainText(msg.Document.MimeType) {
-		b.replyWithText(msg, "Unsupported file format. Please input plain text file or send a message. We currently do not support other file formats.")
+		b.replyToMsgWithI18n(msg, errorOnFileUploadInvalidFormatMsgId)
 		return
 	}
 	fileURL, err := b.bot.GetFileDirectURL(msg.Document.FileID)
 	if err != nil {
-		b.replyError(msg, "Failed to build file url", err)
+
+		b.replyErrorWithI18n(msg, errorOnFileUploadBuildingFileURLMsgId, err)
 		return
 	}
 	text, err := b.fileLoader.DownloadTextFile(fileURL)
 	switch err {
 	case nil:
 	case fileloader.ErrFileIsTooBig:
-		b.replyWithText(msg, "File size is too big. Max file size is "+sizeconverter.HumanReadableSizeInMB(b.maxFileSize))
+		b.replyToMsgWithI18nWithArgs(msg, errorOnFileUploadTooBigMsgId, map[string]string{
+			"max_file_size": sizeconverter.HumanReadableSizeInMB(b.maxFileSize),
+		})
 		return
 	case fileloader.ErrNotPlainText:
-		b.replyWithText(msg, "Unsupported file format. Please input plain text file or send a message. We currently do not support other file formats.")
+		b.replyToMsgWithI18n(msg, errorOnFileUploadInvalidFormatMsgId)
 		return
 	default:
-		b.replyError(msg, "Failed to download your file", err)
+		b.replyErrorWithI18n(msg, errorOnFileUploadMsgId, err)
 		return
 	}
 
 	textID, err := b.service.AddText(msg.From.ID, msg.Document.FileName, text)
 	if err != nil {
 		if err == service.ErrTextNotUTF8 {
-			b.replyWithText(msg, "Text is not in UTF-8 encoding")
+			b.replyToMsgWithI18n(msg, errorOnTextSaveNotUTF8MsgId)
 			return
 		}
-		b.replyError(msg, "Faled to save text", err)
+		b.replyErrorWithI18n(msg, errorOnTextSaveMsgId, err)
 		return
 	}
-	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
-	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
-	b.replyWithText(msg, fmt.Sprintf("Text <code>%s</code> is saved", msg.Document.FileName), readBtn, deleteBtn)
+	readBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, readButtonMsgId), textSelect+textID)
+	deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, deleteButtonMsgId), deleteText+textID)
+	b.replyToMsgWithI18nWithArgs(msg, textSavedMsgId, map[string]string{
+		"text_name": msg.Document.FileName,
+	}, readBtn, deleteBtn)
 }
 
 func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
@@ -443,6 +450,7 @@ func (b *Bot) onQueueFilled(userID int64, msgText string) {
 	textID, err := b.service.AddText(userID, textName, msgText)
 	if err != nil {
 		b.sendToUser(userID, "Failed to save text: "+err.Error())
+
 		return
 	}
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
