@@ -385,7 +385,7 @@ func (b *Bot) delete(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) help(msg *tgbotapi.Message) {
-	b.replyWithText(msg, helpMsg)
+	b.replyToMsgWithI18n(msg, helpMsg)
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
