@@ -30,11 +30,11 @@
         "chunk_size_set": "Chunk size set. But keep in mind that text gets chunked on save and currently they are not re-chunked on chunk size change",
         "text_saved": "Text <code>{{text_name}}</code> is saved",
 
-        "previous_button": "Prev",
-        "next_button": "Next",
-        "delete_button": "Delete text",
-        "read_button": "Read",
-        "reread_button": "Reread",
+        "previous_button": "⬅️ Prev",
+        "next_button": "Next ➡️",
+        "delete_button": "❌ Delete text",
+        "read_button": "📖 Read",
+        "reread_button": "♻️Reread",
 
         "onboarding_first_msg": "Welcome to ADHD Reading Bot! 📚📖\nWe live busy lives. It's hard to find time to read books or articles or even posts in Telegram channels...\nBut it's easy to find this 1 minute to look at this cutie cat picture in Telegram 😍",
         "onboarding_second_msg":"This bot can help you chunk books, articles, or long-read posts into smaller segments.    \n1️⃣ Easy to digest. 🤤   \n     Choose your own size of segments. The default is only 500 symbols. (1 short paragraph)   \n2️⃣ Easy to start reading. 🚀    \n      Right in Telegram, next to cute kitties.    \n3️⃣ Easy to stop reading 🛑    \n    No more remembering which paragraph you stopped at    \n4️⃣ Easy to share! 🤝   \n     No more excruciating selecting of words, just Forward whole chunk to your Telegram contacts or a group",
@@ -77,11 +77,11 @@
         "chunk_size_set": "Размер фрагмента установлен. Но имейте в виду, что текст разбивается на фрагменты при сохранении, и в настоящее время тексты не разбиваются повторно при изменении размера фрагмента",
         "text_saved"  : "Текст <code>{{text_name}}</code> сохранен",
 
-        "previous_button": "Назад",
-        "next_button": "Вперед",
-        "delete_button": "Удалить",
-        "read_button": "Читать",
-        "reread_button": "Перечитать",
+        "previous_button": "⬅️ Назад",
+        "next_button": "Вперед ➡️",
+        "delete_button": "❌ Удалить",
+        "read_button": "📖 Читать",
+        "reread_button": "♻️ Перечитать",
 
         "onboarding_first_msg": "Добро пожаловать в ADHD Reading Bot! 📚📖\nНаша жизнь полна дел.\nТрудно найти время на чтение книг, статей или даже постов в каналах... Но легко найти одну минуту, чтобы посмотреть на эту милую фотографию котика в Telegram 😍",
         "onboarding_second_msg":"Этот бот может помочь вам разбить книги, статьи или длинные посты на более мелкие фрагменты.\n1️⃣ Легко усваивать. 🤤\nВыберите свой собственный размер фрагментов. По умолчанию это всего лишь 500 символов. (1 короткий параграф)\n2️⃣ Легко начать чтение. 🚀\nПрямо в Telegram, рядом с милыми котиками.\n3️⃣ Легко прекратить чтение. 🛑\nБольше не нужно запоминать, на каком параграфе вы остановились\n4️⃣ Легко делиться! 🤝\nБольше не нужно мучительно выделять цитату, просто перешлите весь фрагмент своим контактам в Telegram или группе",
