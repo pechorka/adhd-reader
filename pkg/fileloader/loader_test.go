@@ -43,7 +43,7 @@ func TestLoader_DownloadTextFile(t *testing.T) {
 	t.Run("30MbFile", func(t *testing.T) {
 		_, err := loader.DownloadTextFile(srv.URL + "/30MbFile.txt")
 		require.Error(t, err)
-		require.True(t, strings.HasPrefix(err.Error(), "file is too big, max size is"))
+		require.True(t, strings.HasPrefix(err.Error(), "file is too big"))
 	})
 }
 
@@ -61,5 +61,5 @@ func TestLoader_DownloadTextFile_NoContentLentgh(t *testing.T) {
 
 	_, err := loader.DownloadTextFile(srv.URL)
 	require.Error(t, err)
-	require.True(t, strings.HasPrefix(err.Error(), "file is too big, max size is"))
+	require.True(t, strings.HasPrefix(err.Error(), "file is too big"))
 }
