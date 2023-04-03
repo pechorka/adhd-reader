@@ -446,11 +446,12 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) onQueueFilled(userID int64, msgText string) {
+	//@pechorka, не получилось, потому что там надо получать language code, а по юзер ИД такое нельзя сделать
+
 	textName := runeslice.NRunes(msgText, 64)
 	textID, err := b.service.AddText(userID, textName, msgText)
 	if err != nil {
 		b.sendToUser(userID, "Failed to save text: "+err.Error())
-
 		return
 	}
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
