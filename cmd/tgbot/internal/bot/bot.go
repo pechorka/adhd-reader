@@ -300,9 +300,15 @@ func (b *Bot) start(msg *tgbotapi.Message) {
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
+		file := startFileEn
+		fileName := startFileNameEn
+		if getLanguageCode(msg.From) == langCodeRu {
+			file = startFileRu
+			fileName = startFileNameRu
+		}
 		fileMsg := tgbotapi.NewDocument(msg.From.ID, tgbotapi.FileBytes{
-			Name:  startFileName,
-			Bytes: startFile,
+			Name:  fileName,
+			Bytes: file,
 		})
 		b.send(fileMsg)
 		b.sendTyping(msg)
@@ -572,10 +578,15 @@ func (b *Bot) reportError(errText string) {
 	}()
 }
 
+const (
+	langCodeEn = "en"
+	langCodeRu = "ru"
+)
+
 func getLanguageCode(user *tgbotapi.User) string {
-	lang := "en"
-	if user.LanguageCode == "ru" {
-		lang = "ru"
+	lang := langCodeEn
+	if user.LanguageCode == langCodeRu {
+		lang = langCodeRu
 	}
 	return lang
 }

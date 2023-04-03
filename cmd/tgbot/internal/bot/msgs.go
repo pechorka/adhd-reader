@@ -3,9 +3,13 @@ package bot
 import _ "embed"
 
 //go:embed initialFiles/Your.attention.span.is.shrinking.txt
-var startFile []byte
+var startFileEn []byte
 
-const startFileName = "Your.attention.span.is.shrinking.txt"
+//go:embed initialFiles/Обучение_в_эпоху_золотых_рыбок.txt
+var startFileRu []byte
+
+const startFileNameEn = "Your attention span is shrinking.txt"
+const startFileNameRu = `Обучение в эпоху "золотых_рыбок".txt`
 
 // error messages
 const (
