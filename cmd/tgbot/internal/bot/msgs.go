@@ -21,6 +21,11 @@ const (
 	errorOnSettingChunkSizeMsgId          = "error_on_setting_chunk_size"
 	errorOnDeletingTextMsgId              = "error_on_deleting_text"
 	errorOnFileUploadTooBigMsgId          = "error_on_file_upload_too_big"
+	errorOnFileUploadInvalidFormatMsgId   = "error_on_file_upload_invalid_format"
+	errorOnFileUploadBuildingFileURLMsgId = "error_on_file_upload_building_file_URL"
+	errorOnFileUploadMsgId                = "error_on_file_upload"
+	errorOnTextSaveNotUTF8MsgId           = "error_on_text_save_not_utf8"
+	errorOnTextSaveMsgId                  = "error_on_text_save"
 )
 
 const (
@@ -31,12 +36,14 @@ const (
 	onListMsgId        = "on_list"
 	pageSetMsgId       = "page_set"
 	chunkSizeSetMsgId  = "chunk_size_set"
+	textSavedMsgId     = "text_saved"
 )
 
 const (
 	previousButtonMsgId = "previous_button"
 	nextButtonMsgId     = "next_button"
 	deleteButtonMsgId   = "delete_button"
+	readButtonMsgId     = "read_button"
 )
 
 const (

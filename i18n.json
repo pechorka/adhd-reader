@@ -12,6 +12,11 @@
         "error_on_setting_chunk_size": "Failed to set chunk size",
         "error_on_deleting_text": "Failed to delete text",
         "error_on_file_upload_too_big": "File size is too big. Max file size is {{max_file_size}} ",
+        "error_on_file_upload_invalid_format": "Unsupported file format. Please input plain text file or send a message. We currently do not support other file formats.",
+        "error_on_file_upload_building_file_URL": "Failed to build file url",
+        "error_on_file_upload": "Failed to upload file",
+        "error_on_text_save_not_utf8": "Failed to save text, file is not in UTF-8 encoding. Please convert it to UTF-8 and try again.",
+        "error_on_text_save": "Failed to save text. ",
 
         "warning_first_chunk_cant_go_back":"Can't go back, you are at the first chunk",
         "warning_no_texts": "No texts found, please add some texts to read",
@@ -23,10 +28,12 @@
         "on_list": "Select some text to read:",
         "page_set": "Page set",
         "chunk_size_set": "Chunk size set. But keep in mind that text gets chunked on save and currently they are not re-chunked on chunk size change",
+        "text_saved": "Text <code>{{text_name}}</code> is saved",
 
         "previous_button": "Prev",
         "next_button": "Next",
-        "delete_button": "Delete text"
+        "delete_button": "Delete text",
+        "read_button": "Read"
     },
     "ru": {
         "panic": "Что-то пошло не так, попробуйте позже",
@@ -40,7 +47,12 @@
         "error_on_parsing_chunk_size": "Не удалось разобрать размер фрагмента",
         "error_on_setting_chunk_size": "Не удалось установить размер фрагмента", 
         "error_on_deleting_text": "Не удалось удалить текст",   
-        "error_on_file_upload_too_big": "Размер файла слишком большой. Максимальный размер файла {{max_file_size}} ",
+        "error_on_file_upload_too_big": "Размер файла слишком большой. Максимальный размер файла {{max_file_size}}",
+        "error_on_file_upload_invalid_format": "Неподдерживаемый формат файла. Пожалуйста, пришлите обычный текстовый файл или отправьте сообщение. В настоящее время мы не поддерживаем другие форматы файлов.",
+        "error_on_file_upload_building_file_URL": "Не удалось сформировать URL файла",
+        "error_on_file_upload": "Не удалось загрузить файл",
+        "error_on_text_save_not_utf8": "Не удалось сохранить текст, файл не в кодировке UTF-8. Пожалуйста, преобразуйте его в UTF-8 и попробуйте снова.",
+        "error_on_text_save": "Не удалось сохранить текст. ",
 
         "warning_first_chunk_cant_go_back":"Нельзя вернуться назад, вы на первом фрагменте",
         "warning_no_texts": "Тексты не найдены, добавьте тексты для чтения",
@@ -52,10 +64,11 @@
         "on_list": "Выберите текст для чтения:",
         "page_set": "Страница установлена",
         "chunk_size_set": "Размер фрагмента установлен. Но имейте в виду, что текст разбивается на фрагменты при сохранении, и в настоящее время тексты не разбиваются повторно при изменении размера фрагмента",
-        
+        "text_saved"  : "Текст <code>{{text_name}}</code> сохранен",
 
         "previous_button": "Назад",
         "next_button": "Вперед",
-        "delete_button": "Удалить текст"
+        "delete_button": "Удалить",
+        "read_button": "Читать"
     }
 }
