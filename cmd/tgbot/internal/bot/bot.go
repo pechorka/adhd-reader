@@ -277,24 +277,24 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 
 func (b *Bot) start(msg *tgbotapi.Message) {
 	go func() { // todo: stop flow on other commands???
-		b.sendToUser(msg.From.ID, firstMsg)
+		b.replyToUserWithI18n(msg.From, firstMsg)
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
-		b.sendToUser(msg.From.ID, secondMsg)
+		b.replyToUserWithI18n(msg.From, secondMsg)
 		b.sendTyping(msg)
 		time.Sleep(5 * time.Second)
 
-		b.sendToUser(msg.From.ID, thirdMsg)
+		b.replyToUserWithI18n(msg.From, thirdMsg)
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
-		b.sendToUser(msg.From.ID, fourthMsg)
-		b.sendToUser(msg.From.ID, fifthMsg)
+		b.replyToUserWithI18n(msg.From, fourthMsg)
+		b.replyToUserWithI18n(msg.From, fifthMsg)
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
-		b.sendToUser(msg.From.ID, sixthMsg)
+		b.replyToUserWithI18n(msg.From, sixthMsg)
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
@@ -306,7 +306,7 @@ func (b *Bot) start(msg *tgbotapi.Message) {
 		b.sendTyping(msg)
 		time.Sleep(2 * time.Second)
 
-		b.sendToUser(msg.From.ID, eighthMsg)
+		b.replyToUserWithI18n(msg.From, eighthMsg)
 	}()
 }
 
