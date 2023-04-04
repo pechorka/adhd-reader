@@ -380,7 +380,7 @@ func (b *Bot) delete(msg *tgbotapi.Message) {
 	textName := strings.TrimSpace(msg.CommandArguments())
 	err := b.service.DeleteTextByName(msg.From.ID, textName)
 	if err != nil {
-		b.replyErrorWithI18n(msg, errorOnDeletingTextMsgId, err)
+		b.replyErrorWithI18n(msg, onTextDeletedMsgId, err)
 		return
 	}
 	b.replyToMsgWithI18n(msg, onTextDeletedMsgId)

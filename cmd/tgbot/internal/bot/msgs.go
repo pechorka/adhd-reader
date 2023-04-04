@@ -12,6 +12,8 @@ const (
 	panicMsgId                            = "panic"
 	errorOnTextSelectMsgId                = "error_on_text_select"
 	errorOnTextDeleteMsgId                = "error_on_text_delete"
+	errorOnTextDeleteExampleTextMsgId     = "error_on_text_delete_example_text"
+	errorOnTextDeleteNoTextsAddedMsgId    = "error_on_text_delete_no_texts_added"
 	erroroOnGettingNextChunk              = "error_on_getting_next_chunk"
 	errorOnListMsgId                      = "error_on_list"
 	errorOnParsingPageMsgId               = "error_on_parsing_page"
@@ -19,7 +21,6 @@ const (
 	errorOnSettingPageMsgId               = "error_on_setting_page"
 	errorOnParsingChunkSizeMsgId          = "error_on_parsing_chunk_size"
 	errorOnSettingChunkSizeMsgId          = "error_on_setting_chunk_size"
-	errorOnDeletingTextMsgId              = "error_on_deleting_text"
 	errorOnFileUploadTooBigMsgId          = "error_on_file_upload_too_big"
 	errorOnFileUploadInvalidFormatMsgId   = "error_on_file_upload_invalid_format"
 	errorOnFileUploadBuildingFileURLMsgId = "error_on_file_upload_building_file_URL"
@@ -40,11 +41,12 @@ const (
 )
 
 const (
-	previousButtonMsgId = "previous_button"
-	nextButtonMsgId     = "next_button"
-	deleteButtonMsgId   = "delete_button"
-	readButtonMsgId     = "read_button"
-	rereadButtonMsgId   = "reread_button"
+	previousButtonMsgId           = "previous_button"
+	nextButtonMsgId               = "next_button"
+	deleteButtonMsgId             = "delete_button"
+	deleteButtonWithTextNameMsgId = "delete_button_with_text_name"
+	readButtonMsgId               = "read_button"
+	rereadButtonMsgId             = "reread_button"
 )
 
 const (
