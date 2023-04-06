@@ -16,6 +16,7 @@ import (
 	"github.com/pechorka/adhd-reader/pkg/contenttype"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/i18n"
+	"github.com/pechorka/adhd-reader/pkg/pdfexctractor"
 	"github.com/pechorka/adhd-reader/pkg/queue"
 	"github.com/pechorka/adhd-reader/pkg/runeslice"
 	"github.com/pechorka/adhd-reader/pkg/sizeconverter"
@@ -403,17 +404,18 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 		})
 		return
 	}
-	if !contenttype.IsPlainText(msg.Document.MimeType) {
+	switch {
+	case contenttype.IsPlainText(msg.Document.MimeType):
+	case contenttype.IsPDF(msg.Document.MimeType):
+	default:
 		b.replyToMsgWithI18n(msg, errorOnFileUploadInvalidFormatMsgId)
-		return
 	}
 	fileURL, err := b.bot.GetFileDirectURL(msg.Document.FileID)
 	if err != nil {
-
 		b.replyErrorWithI18n(msg, errorOnFileUploadBuildingFileURLMsgId, err)
 		return
 	}
-	text, err := b.fileLoader.DownloadTextFile(fileURL)
+	data, err := b.fileLoader.DownloadFile(fileURL)
 	switch err {
 	case nil:
 	case fileloader.ErrFileIsTooBig:
@@ -421,11 +423,20 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 			"max_file_size": sizeconverter.HumanReadableSizeInMB(b.maxFileSize),
 		})
 		return
-	case fileloader.ErrNotPlainText:
-		b.replyToMsgWithI18n(msg, errorOnFileUploadInvalidFormatMsgId)
-		return
 	default:
 		b.replyErrorWithI18n(msg, errorOnFileUploadMsgId, err)
+		return
+	}
+
+	var text string
+	switch {
+	case contenttype.IsPlainText(msg.Document.MimeType):
+		text = string(data)
+	case contenttype.IsPDF(msg.Document.MimeType):
+		text, err = pdfexctractor.ExtractPlainTextFromPDF(data)
+	}
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnFileUploadExtractingTextMsgId, err)
 		return
 	}
 

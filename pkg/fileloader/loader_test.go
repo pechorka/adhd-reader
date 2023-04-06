@@ -31,17 +31,17 @@ func TestLoader_DownloadTextFile(t *testing.T) {
 	})
 
 	t.Run("10MbFile", func(t *testing.T) {
-		_, err := loader.DownloadTextFile(srv.URL + "/10MbFile.txt")
+		_, err := loader.DownloadFile(srv.URL + "/10MbFile.txt")
 		require.NoError(t, err)
 	})
 
 	t.Run("20MbFile", func(t *testing.T) {
-		_, err := loader.DownloadTextFile(srv.URL + "/20MbFile.txt")
+		_, err := loader.DownloadFile(srv.URL + "/20MbFile.txt")
 		require.NoError(t, err)
 	})
 
 	t.Run("30MbFile", func(t *testing.T) {
-		_, err := loader.DownloadTextFile(srv.URL + "/30MbFile.txt")
+		_, err := loader.DownloadFile(srv.URL + "/30MbFile.txt")
 		require.Error(t, err)
 		require.True(t, strings.HasPrefix(err.Error(), "file is too big"))
 	})
@@ -59,7 +59,7 @@ func TestLoader_DownloadTextFile_NoContentLentgh(t *testing.T) {
 		MaxFileSize: 20 * 1024 * 1024,
 	})
 
-	_, err := loader.DownloadTextFile(srv.URL)
+	_, err := loader.DownloadFile(srv.URL)
 	require.Error(t, err)
 	require.True(t, strings.HasPrefix(err.Error(), "file is too big"))
 }
