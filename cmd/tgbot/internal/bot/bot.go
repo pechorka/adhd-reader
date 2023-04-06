@@ -433,7 +433,7 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	case contenttype.IsPlainText(msg.Document.MimeType):
 		text = string(data)
 	case contenttype.IsPDF(msg.Document.MimeType):
-		text, err = pdfexctractor.ExtractPlainTextFromPDF(data)
+		text, err = pdfexctractor.ExtractPlainTextFromPDF_PdfToText(data)
 	}
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnFileUploadExtractingTextMsgId, err)
@@ -479,6 +479,12 @@ func (b *Bot) onQueueFilled(userID int64, msgText string) {
 }
 
 func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	msg := tgbotapi.NewMessage(to.Chat.ID, text)
+	msg.ReplyToMessageID = to.MessageID
+	return b.sendMsg(msg, buttons...)
+}
+
+func (b *Bot) replyWithPlainText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	msg := tgbotapi.NewMessage(to.Chat.ID, text)
 	msg.ReplyToMessageID = to.MessageID
 	return b.sendMsg(msg, buttons...)
