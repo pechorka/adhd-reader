@@ -268,13 +268,13 @@ func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelector
 
 	switch chunkType {
 	case service.ChunkTypeFirst:
-		b.replyWithText(cb.Message, chunkText, nextBtn)
+		b.replyWithPlainText(cb.Message, chunkText, nextBtn)
 	case service.ChunkTypeLast:
 		b.replyToUserWithI18nWithArgs(cb.From, lastChunkMsgId, map[string]string{
 			"text_name": currentText.Name,
 		}, prevBtn, deleteBtn, rereadBtn)
 	default:
-		b.replyWithText(cb.Message, chunkText, prevBtn, nextBtn)
+		b.replyWithPlainText(cb.Message, chunkText, prevBtn, nextBtn)
 	}
 }
 
@@ -487,7 +487,7 @@ func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbota
 func (b *Bot) replyWithPlainText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	msg := tgbotapi.NewMessage(to.Chat.ID, text)
 	msg.ReplyToMessageID = to.MessageID
-	return b.sendMsg(msg, buttons...)
+	return b.sendPlainTextMsg(msg, buttons...)
 }
 
 func (b *Bot) replyErrorWithI18n(msg *tgbotapi.Message, id string, err error, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
@@ -568,16 +568,27 @@ func (b *Bot) sendTyping(to *tgbotapi.Message) {
 
 func (b *Bot) sendMsg(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	if len(buttons) > 0 {
-		rowButtons := make([][]tgbotapi.InlineKeyboardButton, 0, len(buttons))
-		for _, btn := range buttons {
-			rowButtons = append(rowButtons, tgbotapi.NewInlineKeyboardRow(btn))
-		}
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			rowButtons...,
-		)
+		msg.ReplyMarkup = buildReplyMarkup(buttons...)
 	}
 	msg.ParseMode = tgbotapi.ModeHTML
 	return b.send(msg)
+}
+
+func (b *Bot) sendPlainTextMsg(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	if len(buttons) > 0 {
+		msg.ReplyMarkup = buildReplyMarkup(buttons...)
+	}
+	return b.send(msg)
+}
+
+func buildReplyMarkup(buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.InlineKeyboardMarkup {
+	rowButtons := make([][]tgbotapi.InlineKeyboardButton, 0, len(buttons))
+	for _, btn := range buttons {
+		rowButtons = append(rowButtons, tgbotapi.NewInlineKeyboardRow(btn))
+	}
+	return tgbotapi.NewInlineKeyboardMarkup(
+		rowButtons...,
+	)
 }
 
 func (b *Bot) send(msg tgbotapi.Chattable) tgbotapi.Message {
