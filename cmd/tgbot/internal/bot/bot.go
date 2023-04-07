@@ -196,9 +196,9 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 	case strings.HasPrefix(cb.Data, deleteText):
 		b.deleteTextCallBack(cb)
 	case cb.Data == nextChunk:
-		b.nextChunk(cb)
+		b.nextChunk(cb.From)
 	case cb.Data == prevChunk:
-		b.prevChunk(cb)
+		b.prevChunk(cb.From)
 	}
 	// Respond to the callback query, telling Telegram to show the user
 	// a message with the data received.
@@ -218,7 +218,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 	b.replyToUserWithI18nWithArgs(cb.From, onTextSelectMsgId, map[string]string{
 		"text_name": currentText.Name,
 	})
-	b.currentChunk(cb)
+	b.currentChunk(cb.From)
 }
 
 func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
@@ -231,50 +231,50 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 	b.replyToUserWithI18n(cb.From, onTextDeletedMsgId)
 }
 
-func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
-	b.chunkReply(cb, b.service.NextChunk)
+func (b *Bot) nextChunk(from *tgbotapi.User) {
+	b.chunkReply(from, b.service.NextChunk)
 }
 
-func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
-	b.chunkReply(cb, b.service.PrevChunk)
+func (b *Bot) prevChunk(from *tgbotapi.User) {
+	b.chunkReply(from, b.service.PrevChunk)
 }
 
-func (b *Bot) currentChunk(cb *tgbotapi.CallbackQuery) {
-	b.chunkReply(cb, b.service.CurrentOrFirstChunk)
+func (b *Bot) currentChunk(from *tgbotapi.User) {
+	b.chunkReply(from, b.service.CurrentOrFirstChunk)
 }
 
 type chunkSelectorFunc func(userID int64) (storage.Text, string, service.ChunkType, error)
 
-func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelectorFunc) {
-	currentText, chunkText, chunkType, err := chunkSelector(cb.From.ID)
-	prevBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, previousButtonMsgId), prevChunk)
-	nextBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, nextButtonMsgId), nextChunk)
-	deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, deleteButtonMsgId), deleteText+currentText.UUID)
-	rereadBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, rereadButtonMsgId), textSelect+currentText.UUID)
+func (b *Bot) chunkReply(from *tgbotapi.User, chunkSelector chunkSelectorFunc) {
+	currentText, chunkText, chunkType, err := chunkSelector(from.ID)
+	prevBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, previousButtonMsgId), prevChunk)
+	nextBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, nextButtonMsgId), nextChunk)
+	deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, deleteButtonMsgId), deleteText+currentText.UUID)
+	rereadBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, rereadButtonMsgId), textSelect+currentText.UUID)
 	// #29 TODO code for reread button
 	switch err {
 	case service.ErrFirstChunk:
-		b.replyToUserWithI18n(cb.From, warningFirstChunkCantGoBackMsgId, nextBtn)
+		b.replyToUserWithI18n(from, warningFirstChunkCantGoBackMsgId, nextBtn)
 		return
 	case service.ErrTextFinished:
-		b.replyToUserWithI18nWithArgs(cb.From, textFinishedMsgId, map[string]string{
+		b.replyToUserWithI18nWithArgs(from, textFinishedMsgId, map[string]string{
 			"text_name": currentText.Name,
 		}, prevBtn, deleteBtn)
 	case nil:
 	default:
-		b.replyErrorToUserWithI18n(cb.From, erroroOnGettingNextChunk, err)
+		b.replyErrorToUserWithI18n(from, erroroOnGettingNextChunk, err)
 		return
 	}
 
 	switch chunkType {
 	case service.ChunkTypeFirst:
-		b.replyWithPlainText(cb.Message, chunkText, nextBtn)
+		b.replyWithPlainText(from, chunkText, nextBtn)
 	case service.ChunkTypeLast:
-		b.replyToUserWithI18nWithArgs(cb.From, lastChunkMsgId, map[string]string{
+		b.replyToUserWithI18nWithArgs(from, lastChunkMsgId, map[string]string{
 			"text_name": currentText.Name,
 		}, prevBtn, deleteBtn, rereadBtn)
 	default:
-		b.replyWithPlainText(cb.Message, chunkText, prevBtn, nextBtn)
+		b.replyWithPlainText(from, chunkText, prevBtn, nextBtn)
 	}
 }
 
@@ -366,6 +366,7 @@ func (b *Bot) page(msg *tgbotapi.Message) {
 		return
 	}
 	b.replyToMsgWithI18n(msg, pageSetMsgId)
+	b.currentChunk(msg.From)
 }
 
 func (b *Bot) chunk(msg *tgbotapi.Message) {
@@ -484,9 +485,8 @@ func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbota
 	return b.sendMsg(msg, buttons...)
 }
 
-func (b *Bot) replyWithPlainText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
-	msg := tgbotapi.NewMessage(to.Chat.ID, text)
-	msg.ReplyToMessageID = to.MessageID
+func (b *Bot) replyWithPlainText(to *tgbotapi.User, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	msg := tgbotapi.NewMessage(to.ID, text)
 	return b.sendPlainTextMsg(msg, buttons...)
 }
 
