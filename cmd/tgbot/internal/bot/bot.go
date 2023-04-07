@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"log"
 	"runtime/debug"
@@ -467,8 +468,12 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 
 func (b *Bot) onQueueFilled(userID int64, msgText string) {
 	//@pechorka, не получилось, потому что там надо получать language code, а по юзер ИД такое нельзя сделать
+	textName, _, ok := strings.Cut(msgText, "\n")
+	const maxTextNameLength = 64
+	if !ok || utf8.RuneCountInString(textName) > maxTextNameLength {
+		textName = strings.TrimSpace(runeslice.NRunes(msgText, maxTextNameLength))
+	}
 
-	textName := runeslice.NRunes(msgText, 64)
 	textID, err := b.service.AddText(userID, textName, msgText)
 	if err != nil {
 		b.sendToUser(userID, "Failed to save text: "+err.Error())
