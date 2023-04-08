@@ -84,12 +84,11 @@ func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
 			}
 		}
 		textBucketName := []byte(uuid.New().String())
-		notSelected := int64(NotSelected) // TODO: remove this when current chunk is not pointer
 		texts.Texts = append(texts.Texts, Text{
 			UUID:         textUUID,
 			Name:         newText.Name,
 			BucketName:   textBucketName,
-			CurrentChunk: &notSelected,
+			CurrentChunk: NotSelected,
 		})
 		if err = putTexts(b, id, texts); err != nil {
 			return err
@@ -177,11 +176,11 @@ func (s *Storage) SelectChunk(userID int64, updFunc SelectChunkFunc) (string, er
 			return errors.New("unexpected error: text bucket not found")
 		}
 		totalChunks := bytesToInt64(textBucket.Get(totalChunksKey))
-		nextChunk, err := updFunc(curText, *curText.CurrentChunk, totalChunks)
+		nextChunk, err := updFunc(curText, curText.CurrentChunk, totalChunks)
 		if err != nil {
 			return err
 		}
-		curText.CurrentChunk = &nextChunk
+		curText.CurrentChunk = nextChunk
 		texts.Texts[texts.Current] = curText
 		if err = putTexts(b, id, texts); err != nil {
 			return err
@@ -348,7 +347,7 @@ func enrichTexts(tx *bolt.Tx, texts UserTexts) ([]TextWithChunkInfo, error) {
 		result = append(result, TextWithChunkInfo{
 			UUID:         text.UUID,
 			Name:         text.Name,
-			CurrentChunk: *text.CurrentChunk,
+			CurrentChunk: text.CurrentChunk,
 			TotalChunks:  totalChunks,
 		})
 	}
