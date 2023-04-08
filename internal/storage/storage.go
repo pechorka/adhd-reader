@@ -22,9 +22,8 @@ var (
 )
 
 var (
-	fullTextKey     = []byte("full_text")
-	currentChunkKey = []byte("current_chunk")
-	totalChunksKey  = []byte("total_chunks")
+	fullTextKey    = []byte("full_text")
+	totalChunksKey = []byte("total_chunks")
 )
 
 // Storage is a wrapper around bolt.DB
@@ -85,10 +84,12 @@ func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
 			}
 		}
 		textBucketName := []byte(uuid.New().String())
+		notSelected := int64(NotSelected) // TODO: remove this when current chunk is not pointer
 		texts.Texts = append(texts.Texts, Text{
-			UUID:       textUUID,
-			Name:       newText.Name,
-			BucketName: textBucketName,
+			UUID:         textUUID,
+			Name:         newText.Name,
+			BucketName:   textBucketName,
+			CurrentChunk: &notSelected,
 		})
 		if err = putTexts(b, id, texts); err != nil {
 			return err
@@ -99,9 +100,6 @@ func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
 			return err
 		}
 		if err = textBucket.Put(fullTextKey, []byte(newText.Text)); err != nil {
-			return err
-		}
-		if err = textBucket.Put(currentChunkKey, int64ToBytes(NotSelected)); err != nil {
 			return err
 		}
 		totalChunks := int64(len(newText.Chunks))
@@ -178,14 +176,14 @@ func (s *Storage) SelectChunk(userID int64, updFunc SelectChunkFunc) (string, er
 		if textBucket == nil { // should not happen
 			return errors.New("unexpected error: text bucket not found")
 		}
-		curChunk := bytesToInt64(textBucket.Get(currentChunkKey))
 		totalChunks := bytesToInt64(textBucket.Get(totalChunksKey))
-		nextChunk, err := updFunc(curText, curChunk, totalChunks)
+		nextChunk, err := updFunc(curText, *curText.CurrentChunk, totalChunks)
 		if err != nil {
 			return err
 		}
-		err = textBucket.Put(currentChunkKey, int64ToBytes(nextChunk))
-		if err != nil {
+		curText.CurrentChunk = &nextChunk
+		texts.Texts[texts.Current] = curText
+		if err = putTexts(b, id, texts); err != nil {
 			return err
 		}
 		chunkText = string(textBucket.Get(int64ToBytes(nextChunk)))
@@ -330,9 +328,8 @@ func getTexts(b *bolt.Bucket, id []byte) (texts UserTexts, err error) {
 	return unmarshalTexts(v)
 }
 
-func unmarshalTexts(b []byte) (UserTexts, error) {
-	var texts UserTexts
-	err := json.Unmarshal(b, &texts)
+func unmarshalTexts(v []byte) (texts UserTexts, err error) {
+	err = json.Unmarshal(v, &texts)
 	if err != nil {
 		return defaultUserTexts(), err
 	}
@@ -347,12 +344,11 @@ func enrichTexts(tx *bolt.Tx, texts UserTexts) ([]TextWithChunkInfo, error) {
 		if textBucket == nil {
 			return nil, errors.New("unexpected error: text bucket not found")
 		}
-		curChunk := bytesToInt64(textBucket.Get(currentChunkKey))
 		totalChunks := bytesToInt64(textBucket.Get(totalChunksKey))
 		result = append(result, TextWithChunkInfo{
 			UUID:         text.UUID,
 			Name:         text.Name,
-			CurrentChunk: curChunk,
+			CurrentChunk: *text.CurrentChunk,
 			TotalChunks:  totalChunks,
 		})
 	}

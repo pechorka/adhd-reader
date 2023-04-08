@@ -9,6 +9,9 @@ type Text struct {
 	UUID       string
 	Name       string
 	BucketName []byte
+	// pointer for migration
+	// TODO: remove pointer with migration
+	CurrentChunk *int64
 }
 
 type TextWithChunkInfo struct {

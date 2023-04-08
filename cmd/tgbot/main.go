@@ -9,6 +9,7 @@ import (
 
 	"github.com/pechorka/adhd-reader/internal/service"
 	"github.com/pechorka/adhd-reader/internal/storage"
+	"github.com/pkg/errors"
 
 	"github.com/pechorka/adhd-reader/cmd/tgbot/internal/bot"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
@@ -79,6 +80,10 @@ func run() error {
 		return err
 	}
 	defer store.Close()
+
+	if err := store.MigrateCurrentChunk(); err != nil {
+		return errors.Wrap(err, "migrate current chunk")
+	}
 
 	i18nService := i18n.New()
 	watcher, err := watcher.LoadAndWatch(i18nPath, i18nService)
