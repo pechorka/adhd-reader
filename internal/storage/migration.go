@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"bytes"
+
 	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 )
@@ -14,6 +16,9 @@ func (s *Storage) MigrateCurrentChunk() error {
 		}
 		currentChunkKey := []byte("current_chunk")
 		return b.ForEach(func(k, v []byte) error {
+			if !bytes.HasPrefix(k, textsPrefix) {
+				return nil
+			}
 			texts, err := unmarshalTexts(v)
 			if err != nil {
 				return err

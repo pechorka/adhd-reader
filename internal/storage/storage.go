@@ -331,7 +331,7 @@ func getTexts(b *bolt.Bucket, id []byte) (texts UserTexts, err error) {
 func unmarshalTexts(v []byte) (texts UserTexts, err error) {
 	err = json.Unmarshal(v, &texts)
 	if err != nil {
-		return defaultUserTexts(), err
+		return defaultUserTexts(), errors.Wrap(err, "failed to unmarshal texts")
 	}
 	return texts, nil
 }
