@@ -480,17 +480,11 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 		return
 	}
 
-	var textID string
-	switch {
-	case contenttype.IsPlainText(msg.Document.MimeType):
-		textID, err = b.service.AddText(msg.From.ID, msg.Document.FileName, text)
-	default:
-		textID, err = b.service.AddTextFromFile(
-			msg.From.ID,
-			filechecksum.Calculate(data),
-			msg.Document.FileName, text,
-		)
-	}
+	textID, err := b.service.AddTextFromFile(
+		msg.From.ID,
+		filechecksum.Calculate(data),
+		msg.Document.FileName, text,
+	)
 	if err != nil {
 		if err == service.ErrTextNotUTF8 {
 			b.replyToMsgWithI18n(msg, errorOnTextSaveNotUTF8MsgId)
