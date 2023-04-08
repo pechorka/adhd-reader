@@ -19,6 +19,7 @@
         "error_on_file_upload": "Failed to upload file",
         "error_on_text_save_not_utf8": "Failed to save text, file is not in UTF-8 encoding. Please convert it to UTF-8 and try again.",
         "error_on_text_save": "Failed to save text. ",
+        "error_on_text_save_already_exists": "You already have same file by the name <code>{{text_name}}</code>.",
         "error_unknown_command": "Unknown command. Please use /help to get a list of available commands",
         "error_on_text_rename": "Failed to rename text",
 
@@ -72,6 +73,7 @@
         "error_on_file_upload": "Не удалось загрузить файл",
         "error_on_text_save_not_utf8": "Не удалось сохранить текст, файл не в кодировке UTF-8. Пожалуйста, преобразуйте его в UTF-8 и попробуйте снова.",
         "error_on_text_save": "Не удалось сохранить текст. ",
+        "error_on_text_save_already_exists": "У вас уже есть такой же файл в библиотеке под именем <code>{{text_name}}</code>.",
         "error_unknown_command": "Неизвестная команда. Пожалуйста, используйте /help для получения списка команд.",
         "error_on_text_rename": "Не удалось переименовать текст",
 

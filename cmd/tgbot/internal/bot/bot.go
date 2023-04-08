@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"errors"
 	"fmt"
 	"unicode/utf8"
 
@@ -488,6 +489,13 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	if err != nil {
 		if err == service.ErrTextNotUTF8 {
 			b.replyToMsgWithI18n(msg, errorOnTextSaveNotUTF8MsgId)
+			return
+		}
+		var alreadyExists *storage.TextAlreadyExistsError
+		if errors.As(err, &alreadyExists) {
+			b.replyToMsgWithI18nWithArgs(msg, errorOnTextSaveAlreadyExistsMsgId, map[string]string{
+				"text_name": alreadyExists.ExistingText.Name,
+			})
 			return
 		}
 		b.replyErrorWithI18n(msg, errorOnTextSaveMsgId, err)

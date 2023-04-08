@@ -79,7 +79,7 @@ func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
 		if err != nil {
 			return err
 		}
-		if err = validateTextName(texts, newText.Name); err != nil {
+		if err = validateUserTexts(texts, textNameUnique(newText.Name)); err != nil {
 			return err
 		}
 		textBucketName, err := fillTextBucket(tx, newText.Text, newText.Chunks)
@@ -112,7 +112,11 @@ func (s *Storage) AddTextFromProcessedFile(userId int64, name string, pf Process
 		if err != nil {
 			return err
 		}
-		if err = validateTextName(texts, name); err != nil {
+		if err = validateUserTexts(
+			texts,
+			textNameUnique(name),
+			textUUIDUnique(pf.UUID),
+		); err != nil {
 			return err
 		}
 		texts.Texts = append(texts.Texts, Text{
@@ -129,13 +133,43 @@ func (s *Storage) AddTextFromProcessedFile(userId int64, name string, pf Process
 	})
 }
 
-func validateTextName(ut UserTexts, newTextName string) error {
-	for _, text := range ut.Texts {
-		if text.Name == newTextName {
-			return fmt.Errorf("text with name %q already exists", newTextName)
+type textValidatorFunc func(texts Text) error
+
+func validateUserTexts(texts UserTexts, validators ...textValidatorFunc) error {
+	for _, text := range texts.Texts {
+		for _, validator := range validators {
+			if err := validator(text); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
+}
+
+func textNameUnique(textName string) textValidatorFunc {
+	return func(text Text) error {
+		if text.Name == textName {
+			return fmt.Errorf("text with name %q already exists", textName)
+		}
+		return nil
+	}
+}
+
+type TextAlreadyExistsError struct {
+	ExistingText Text
+}
+
+func (e *TextAlreadyExistsError) Error() string {
+	return fmt.Sprintf("text already exists by the name: %s", e.ExistingText.Name)
+}
+
+func textUUIDUnique(textUUID string) textValidatorFunc {
+	return func(text Text) error {
+		if text.UUID == textUUID {
+			return &TextAlreadyExistsError{ExistingText: text}
+		}
+		return nil
+	}
 }
 
 func (s *Storage) GetTexts(id int64) ([]TextWithChunkInfo, error) {
