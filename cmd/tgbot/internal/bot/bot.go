@@ -28,6 +28,7 @@ const (
 	deleteText = "delete-text:"
 	nextChunk  = "next-chunk"
 	prevChunk  = "prev-chunk"
+	rereadText = "reread-text:"
 )
 
 const (
@@ -148,7 +149,7 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 	case "list":
 		b.list(msg)
 	case "page":
-		b.page(msg)
+		b.onPageCommand(msg)
 	case "chunk":
 		b.chunk(msg)
 	case "delete":
@@ -204,6 +205,8 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 		b.nextChunk(cb.From)
 	case cb.Data == prevChunk:
 		b.prevChunk(cb.From)
+	case strings.HasPrefix(cb.Data, rereadText):
+		b.rereadText(cb)
 	}
 	// Respond to the callback query, telling Telegram to show the user
 	// a message with the data received.
@@ -248,6 +251,16 @@ func (b *Bot) currentChunk(from *tgbotapi.User) {
 	b.chunkReply(from, b.service.CurrentOrFirstChunk)
 }
 
+func (b *Bot) rereadText(cb *tgbotapi.CallbackQuery) {
+	textUUID := strings.TrimPrefix(cb.Data, rereadText)
+	_, err := b.service.SelectText(cb.From.ID, textUUID)
+	if err != nil {
+		b.replyErrorToUserWithI18n(cb.From, errorOnTextSelectMsgId, err)
+		return
+	}
+	b.setPage(cb.From, 0)
+}
+
 type chunkSelectorFunc func(userID int64) (storage.Text, string, service.ChunkType, error)
 
 func (b *Bot) chunkReply(from *tgbotapi.User, chunkSelector chunkSelectorFunc) {
@@ -255,7 +268,7 @@ func (b *Bot) chunkReply(from *tgbotapi.User, chunkSelector chunkSelectorFunc) {
 	prevBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, previousButtonMsgId), prevChunk)
 	nextBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, nextButtonMsgId), nextChunk)
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, deleteButtonMsgId), deleteText+currentText.UUID)
-	rereadBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, rereadButtonMsgId), textSelect+currentText.UUID)
+	rereadBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, rereadButtonMsgId), rereadText+currentText.UUID)
 	// #29 TODO code for reread button
 	switch err {
 	case service.ErrFirstChunk:
@@ -354,24 +367,28 @@ func completionPercentString(percent int) string {
 	}
 }
 
-func (b *Bot) page(msg *tgbotapi.Message) {
+func (b *Bot) onPageCommand(msg *tgbotapi.Message) {
 	strPage := msg.CommandArguments()
 	page, err := strconv.ParseInt(strings.TrimSpace(strPage), 10, 64)
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnParsingPageMsgId, err)
 		return
 	}
-	err = b.service.SetPage(msg.From.ID, page)
+	b.setPage(msg.From, page)
+}
+
+func (b *Bot) setPage(from *tgbotapi.User, page int64) {
+	err := b.service.SetPage(from.ID, page)
 	if err != nil {
 		if err == service.ErrTextNotSelected {
-			b.replyToMsgWithI18n(msg, errorOnSettingPageNoTextSelectedMsgId)
+			b.replyToUserWithI18n(from, errorOnSettingPageNoTextSelectedMsgId)
 			return
 		}
-		b.replyErrorWithI18n(msg, errorOnSettingPageMsgId, err)
+		b.replyErrorToUserWithI18n(from, errorOnSettingPageMsgId, err)
 		return
 	}
-	b.replyToMsgWithI18n(msg, pageSetMsgId)
-	b.currentChunk(msg.From)
+	b.replyToUserWithI18n(from, pageSetMsgId)
+	b.currentChunk(from)
 }
 
 func (b *Bot) chunk(msg *tgbotapi.Message) {
