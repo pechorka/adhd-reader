@@ -41,6 +41,7 @@ type Bot struct {
 	fileLoader  *fileloader.Loader
 	i18n        *i18n.Localies
 	maxFileSize int
+	adminUsers  map[int64]struct{}
 }
 
 type Config struct {
@@ -50,6 +51,7 @@ type Config struct {
 	FileLoader  *fileloader.Loader
 	I18n        *i18n.Localies
 	MaxFileSize int
+	AdminUsers  []int64
 }
 
 func NewBot(cfg Config) (*Bot, error) {
@@ -67,6 +69,10 @@ func NewBot(cfg Config) (*Bot, error) {
 
 	bot.Debug = true // TODO before release take from config
 
+	adminUsers := make(map[int64]struct{}, len(cfg.AdminUsers))
+	for _, id := range cfg.AdminUsers {
+		adminUsers[id] = struct{}{}
+	}
 	return &Bot{
 		service:     cfg.Service,
 		bot:         bot,
@@ -74,6 +80,7 @@ func NewBot(cfg Config) (*Bot, error) {
 		fileLoader:  cfg.FileLoader,
 		i18n:        cfg.I18n,
 		maxFileSize: cfg.MaxFileSize,
+		adminUsers:  adminUsers,
 	}, nil
 }
 
@@ -154,6 +161,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 				return
 			}
 			log.Println("Unknown command: ", cmd)
+			b.replyToUserWithI18n(msg.From, errorUnknownCommandMsgId)
+			return
 		}
 		b.saveTextFromMessage(msg)
 	}
@@ -169,13 +178,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 	*/
 }
 
-var admins = map[int64]struct{}{
-	373512635: {},
-	310116972: {},
-}
-
 func (b *Bot) handleAdminMsg(msg *tgbotapi.Message) bool {
-	if _, ok := admins[msg.From.ID]; !ok {
+	if _, ok := b.adminUsers[msg.From.ID]; !ok {
 		return false
 	}
 	switch cmd := msg.Command(); cmd {

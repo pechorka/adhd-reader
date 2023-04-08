@@ -19,6 +19,7 @@
         "error_on_file_upload": "Failed to upload file",
         "error_on_text_save_not_utf8": "Failed to save text, file is not in UTF-8 encoding. Please convert it to UTF-8 and try again.",
         "error_on_text_save": "Failed to save text. ",
+        "error_unknown_command": "Unknown command. Please use /help to get a list of available commands",
 
         "warning_first_chunk_cant_go_back":"Can't go back, you are at the first chunk",
         "warning_no_texts": "No texts found, please add some texts to read",
@@ -69,6 +70,7 @@
         "error_on_file_upload": "Не удалось загрузить файл",
         "error_on_text_save_not_utf8": "Не удалось сохранить текст, файл не в кодировке UTF-8. Пожалуйста, преобразуйте его в UTF-8 и попробуйте снова.",
         "error_on_text_save": "Не удалось сохранить текст. ",
+        "error_unknown_command": "Неизвестная команда. Пожалуйста, используйте /help для получения списка команд.",
 
         "warning_first_chunk_cant_go_back":"Нельзя вернуться назад, вы на первом фрагменте",
         "warning_no_texts": "Тексты не найдены, добавьте тексты для чтения",

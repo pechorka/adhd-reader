@@ -32,6 +32,7 @@ const (
 	errorOnFileUploadMsgId                = "error_on_file_upload"
 	errorOnTextSaveNotUTF8MsgId           = "error_on_text_save_not_utf8"
 	errorOnTextSaveMsgId                  = "error_on_text_save"
+	errorUnknownCommandMsgId              = "error_unknown_command"
 )
 
 const (
