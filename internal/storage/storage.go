@@ -274,11 +274,11 @@ func (s *Storage) Analytics() ([]UserAnalytics, error) {
 		userTexts := make(map[string]UserTexts)
 		err := b.ForEach(func(k, v []byte) error {
 			switch {
-			case bytes.HasPrefix(k, []byte("chunk-size-")):
-				userID := string(k[11:])
+			case bytes.HasPrefix(k, chunkSizePrefix):
+				userID := string(k[len(chunkSizePrefix):])
 				userChunkSize[userID] = bytesToInt64(v)
-			case bytes.HasPrefix(k, []byte("texts-")):
-				userID := string(k[6:])
+			case bytes.HasPrefix(k, textsPrefix):
+				userID := string(k[len(textsPrefix):])
 				texts, err := getTexts(b, k)
 				if err != nil {
 					return err
@@ -293,24 +293,13 @@ func (s *Storage) Analytics() ([]UserAnalytics, error) {
 
 		result = make([]UserAnalytics, 0, len(userChunkSize))
 		for strUserID, texts := range userTexts {
-			textsAnalytics := make([]TextWithChunkInfo, 0, len(texts.Texts))
-			for _, text := range texts.Texts {
-				textBucket := tx.Bucket(text.BucketName)
-				if textBucket == nil { // should not happen
-					continue
-				}
-				curChunk := bytesToInt64(textBucket.Get(currentChunkKey))
-				totalChunks := bytesToInt64(textBucket.Get(totalChunksKey))
-				textsAnalytics = append(textsAnalytics, TextWithChunkInfo{
-					UUID:         text.UUID,
-					Name:         text.Name,
-					TotalChunks:  totalChunks,
-					CurrentChunk: curChunk,
-				})
-			}
 			userID, err := strconv.ParseInt(strUserID, 10, 64)
 			if err != nil { // should not happen
 				return errors.Wrap(err, "failed to parse user id")
+			}
+			textsAnalytics, err := enrichTexts(tx, texts)
+			if err != nil {
+				return errors.Wrap(err, "failed to enrich texts")
 			}
 			result = append(result, UserAnalytics{
 				UserID:         userID,
@@ -327,8 +316,10 @@ func (s *Storage) Analytics() ([]UserAnalytics, error) {
 
 // helper functions
 
+var textsPrefix = []byte("texts-")
+
 func textsId(id int64) []byte {
-	return []byte(fmt.Sprintf("texts-%d", id))
+	return []byte(fmt.Sprintf("%s%d", textsPrefix, id))
 }
 
 func getTexts(b *bolt.Bucket, id []byte) (texts UserTexts, err error) {
@@ -336,7 +327,12 @@ func getTexts(b *bolt.Bucket, id []byte) (texts UserTexts, err error) {
 	if v == nil {
 		return defaultUserTexts(), nil
 	}
-	err = json.Unmarshal(v, &texts)
+	return unmarshalTexts(v)
+}
+
+func unmarshalTexts(b []byte) (UserTexts, error) {
+	var texts UserTexts
+	err := json.Unmarshal(b, &texts)
 	if err != nil {
 		return defaultUserTexts(), err
 	}
@@ -371,8 +367,10 @@ func putTexts(b *bolt.Bucket, id []byte, texts UserTexts) error {
 	return b.Put(id, encoded)
 }
 
+var chunkSizePrefix = []byte("chunk-size-")
+
 func chunkSizeId(id int64) []byte {
-	return []byte(fmt.Sprintf("chunk-size-%d", id))
+	return []byte(fmt.Sprintf("%s%d", chunkSizePrefix, id))
 }
 
 func getChunkSize(b *bolt.Bucket, id []byte) (size int64) {
