@@ -18,7 +18,8 @@ var ErrNotFound = errors.New("not found")
 const NotSelected = -1
 
 var (
-	bktUserInfo = []byte("user_info")
+	bktUserInfo       = []byte("user_info")
+	bktProcessedFiles = []byte("processed_files")
 )
 
 var (
@@ -78,41 +79,63 @@ func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
 		if err != nil {
 			return err
 		}
-		for _, text := range texts.Texts {
-			if text.Name == newText.Name {
-				return fmt.Errorf("text with name %q already exists", newText.Name)
-			}
+		if err = validateTextName(texts, newText.Name); err != nil {
+			return err
 		}
-		textBucketName := []byte(uuid.New().String())
+		textBucketName, err := fillTextBucket(tx, newText.Text, newText.Chunks)
+		if err != nil {
+			return err
+		}
 		texts.Texts = append(texts.Texts, Text{
 			UUID:         textUUID,
 			Name:         newText.Name,
+			Source:       SourceText,
 			BucketName:   textBucketName,
 			CurrentChunk: NotSelected,
 		})
 		if err = putTexts(b, id, texts); err != nil {
 			return err
 		}
-		// fill the text bucket
-		textBucket, err := tx.CreateBucketIfNotExists(textBucketName)
-		if err != nil {
-			return err
-		}
-		if err = textBucket.Put(fullTextKey, []byte(newText.Text)); err != nil {
-			return err
-		}
-		totalChunks := int64(len(newText.Chunks))
-		if err = textBucket.Put(totalChunksKey, int64ToBytes(totalChunks)); err != nil {
-			return err
-		}
-		for i, chunk := range newText.Chunks {
-			if err = textBucket.Put(int64ToBytes(int64(i)), []byte(chunk)); err != nil {
-				return err
-			}
-		}
 		return nil
 	})
 	return textUUID, err
+}
+
+func (s *Storage) AddTextFromProcessedFile(userId int64, name string, pf ProcessedFile) (string, error) {
+	return pf.UUID, s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktUserInfo)
+		if err != nil {
+			return err
+		}
+		id := textsId(userId)
+		texts, err := getTexts(b, id)
+		if err != nil {
+			return err
+		}
+		if err = validateTextName(texts, name); err != nil {
+			return err
+		}
+		texts.Texts = append(texts.Texts, Text{
+			UUID:         pf.UUID,
+			Name:         name,
+			Source:       SourceFile,
+			BucketName:   pf.BucketName,
+			CurrentChunk: NotSelected,
+		})
+		if err = putTexts(b, id, texts); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func validateTextName(ut UserTexts, newTextName string) error {
+	for _, text := range ut.Texts {
+		if text.Name == newTextName {
+			return fmt.Errorf("text with name %q already exists", newTextName)
+		}
+	}
+	return nil
 }
 
 func (s *Storage) GetTexts(id int64) ([]TextWithChunkInfo, error) {
@@ -260,6 +283,42 @@ func (s *Storage) deleteTextBy(userID int64, predicate func(Text) bool) error {
 	})
 }
 
+func (s *Storage) AddProcessedFile(newPf NewProcessedFile) (ProcessedFile, error) {
+	var pf ProcessedFile
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktProcessedFiles)
+		if err != nil {
+			return err
+		}
+		textBucketName, err := fillTextBucket(tx, newPf.Text, newPf.Chunks)
+		if err != nil {
+			return err
+		}
+		pf = ProcessedFile{
+			UUID:       uuid.NewString(),
+			BucketName: textBucketName,
+			ChunkSize:  newPf.ChunkSize,
+			CheckSum:   newPf.CheckSum,
+		}
+		return putProcessedFile(b, pf)
+	})
+	return pf, err
+}
+
+func (s *Storage) GetProcessedFileByChecksum(checksum []byte) (ProcessedFile, error) {
+	var pf ProcessedFile
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktProcessedFiles)
+		if b == nil {
+			return ErrNotFound
+		}
+		var err error
+		pf, err = getProcessedFile(b, checksum)
+		return err
+	})
+	return pf, err
+}
+
 func (s *Storage) Analytics() ([]UserAnalytics, error) {
 	var result []UserAnalytics
 	err := s.db.View(func(tx *bolt.Tx) error {
@@ -378,6 +437,47 @@ func getChunkSize(b *bolt.Bucket, id []byte) (size int64) {
 
 func putChunkSize(b *bolt.Bucket, id []byte, size int64) error {
 	return b.Put(id, int64ToBytes(size))
+}
+
+func putProcessedFile(b *bolt.Bucket, pf ProcessedFile) error {
+	encoded, err := json.Marshal(pf)
+	if err != nil {
+		return err
+	}
+	return b.Put(pf.CheckSum, encoded)
+}
+
+func getProcessedFile(b *bolt.Bucket, checksum []byte) (pf ProcessedFile, err error) {
+	v := b.Get(checksum)
+	if v == nil {
+		return pf, ErrNotFound
+	}
+	err = json.Unmarshal(v, &pf)
+	if err != nil {
+		return pf, errors.Wrap(err, "failed to unmarshal processed file")
+	}
+	return pf, nil
+}
+
+func fillTextBucket(tx *bolt.Tx, text string, chunks []string) ([]byte, error) {
+	textBucketName := []byte(uuid.New().String())
+	textBucket, err := tx.CreateBucketIfNotExists(textBucketName)
+	if err != nil {
+		return nil, err
+	}
+	if err = textBucket.Put(fullTextKey, []byte(text)); err != nil {
+		return nil, err
+	}
+	totalChunks := int64(len(chunks))
+	if err = textBucket.Put(totalChunksKey, int64ToBytes(totalChunks)); err != nil {
+		return nil, err
+	}
+	for i, chunk := range chunks {
+		if err = textBucket.Put(int64ToBytes(int64(i)), []byte(chunk)); err != nil {
+			return nil, err
+		}
+	}
+	return textBucketName, nil
 }
 
 func int64ToBytes(i int64) []byte {

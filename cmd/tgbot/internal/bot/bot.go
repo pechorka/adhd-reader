@@ -15,6 +15,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pechorka/adhd-reader/pkg/contenttype"
+	"github.com/pechorka/adhd-reader/pkg/filechecksum"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/i18n"
 	"github.com/pechorka/adhd-reader/pkg/pdfexctractor"
@@ -456,14 +457,24 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	case contenttype.IsPlainText(msg.Document.MimeType):
 		text = string(data)
 	case contenttype.IsPDF(msg.Document.MimeType):
-		text, err = pdfexctractor.ExtractPlainTextFromPDF_PdfToText(data)
+		text, err = pdfexctractor.ExtractPlainTextFromPDF(data)
 	}
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnFileUploadExtractingTextMsgId, err)
 		return
 	}
 
-	textID, err := b.service.AddText(msg.From.ID, msg.Document.FileName, text)
+	var textID string
+	switch {
+	case contenttype.IsPlainText(msg.Document.MimeType):
+		textID, err = b.service.AddText(msg.From.ID, msg.Document.FileName, text)
+	default:
+		textID, err = b.service.AddTextFromFile(
+			msg.From.ID,
+			filechecksum.Calculate(data),
+			msg.Document.FileName, text,
+		)
+	}
 	if err != nil {
 		if err == service.ErrTextNotUTF8 {
 			b.replyToMsgWithI18n(msg, errorOnTextSaveNotUTF8MsgId)

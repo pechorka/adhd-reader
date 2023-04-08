@@ -5,9 +5,17 @@ type UserTexts struct {
 	Current int // index of current text
 }
 
+type TextSource string
+
+const (
+	SourceText TextSource = "text"
+	SourceFile TextSource = "file"
+)
+
 type Text struct {
 	UUID         string
 	Name         string
+	Source       TextSource
 	BucketName   []byte
 	CurrentChunk int64
 }
@@ -32,4 +40,18 @@ type UserAnalytics struct {
 	TotalTextCount int64
 	CurrentText    int
 	Texts          []TextWithChunkInfo
+}
+
+type NewProcessedFile struct {
+	Text      string
+	Chunks    []string
+	ChunkSize int64
+	CheckSum  []byte
+}
+
+type ProcessedFile struct {
+	UUID       string
+	BucketName []byte
+	ChunkSize  int64
+	CheckSum   []byte
 }
