@@ -155,6 +155,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.chunk(msg)
 	case "delete":
 		b.delete(msg)
+	case "rename":
+		b.rename(msg)
 	case "help":
 		b.help(msg)
 	default:
@@ -176,6 +178,7 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		page - set page number, pass page number as argument
 		chunk - set chunk size, pass chunk size as argument
 		delete - delete text, pass text name as argument
+		rename - rename text, pass new name as argument
 		help - troubleshooting and support
 	*/
 }
@@ -415,6 +418,19 @@ func (b *Bot) delete(msg *tgbotapi.Message) {
 		return
 	}
 	b.replyToMsgWithI18n(msg, onTextDeletedMsgId)
+}
+
+func (b *Bot) rename(msg *tgbotapi.Message) {
+	newName := strings.TrimSpace(msg.CommandArguments())
+	oldName, err := b.service.RenameText(msg.From.ID, newName)
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnTextRenameMsgId, err)
+		return
+	}
+	b.replyToMsgWithI18nWithArgs(msg, onTextRenamedMsgId, map[string]string{
+		"text_name":     oldName,
+		"new_text_name": newName,
+	})
 }
 
 func (b *Bot) help(msg *tgbotapi.Message) {

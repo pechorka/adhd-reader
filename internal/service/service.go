@@ -155,6 +155,27 @@ func (s *Service) SelectText(userID int64, textUUID string) (storage.Text, error
 	return text, err
 }
 
+func (s *Service) RenameText(userID int64, newName string) (string, error) {
+	if newName == "" {
+		return "", errors.New("text name is empty")
+	}
+	oldName := ""
+	err := s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
+		if texts.Current == storage.NotSelected {
+			return errors.New("no text selected")
+		}
+		for _, t := range texts.Texts {
+			if t.Name == newName {
+				return errors.Errorf("text with name %s already exists", newName)
+			}
+		}
+		oldName = texts.Texts[texts.Current].Name
+		texts.Texts[texts.Current].Name = newName
+		return nil
+	})
+	return oldName, err
+}
+
 func (s *Service) SetPage(userID, page int64) error {
 	_, err := s.s.SelectChunk(userID, func(_ storage.Text, _, totalChunks int64) (nextChunk int64, err error) {
 		if page >= totalChunks || page < 0 {

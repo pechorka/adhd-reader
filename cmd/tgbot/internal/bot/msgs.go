@@ -33,6 +33,7 @@ const (
 	errorOnTextSaveNotUTF8MsgId           = "error_on_text_save_not_utf8"
 	errorOnTextSaveMsgId                  = "error_on_text_save"
 	errorUnknownCommandMsgId              = "error_unknown_command"
+	errorOnTextRenameMsgId                = "error_on_text_rename"
 )
 
 const (
@@ -44,6 +45,7 @@ const (
 	pageSetMsgId       = "page_set"
 	chunkSizeSetMsgId  = "chunk_size_set"
 	textSavedMsgId     = "text_saved"
+	onTextRenamedMsgId = "on_text_renamed"
 )
 
 const (

@@ -20,6 +20,7 @@
         "error_on_text_save_not_utf8": "Failed to save text, file is not in UTF-8 encoding. Please convert it to UTF-8 and try again.",
         "error_on_text_save": "Failed to save text. ",
         "error_unknown_command": "Unknown command. Please use /help to get a list of available commands",
+        "error_on_text_rename": "Failed to rename text",
 
         "warning_first_chunk_cant_go_back":"Can't go back, you are at the first chunk",
         "warning_no_texts": "No texts found, please add some texts to read",
@@ -32,6 +33,7 @@
         "page_set": "Page set",
         "chunk_size_set": "Chunk size set. But keep in mind that text gets chunked on save and currently they are not re-chunked on chunk size change",
         "text_saved": "Text <code>{{text_name}}</code> is saved",
+        "on_text_renamed": "Text {{text_name}} is renamed to <code>{{new_text_name}}</code>",
 
         "previous_button": "⬅️ Prev",
         "next_button": "Next ➡️",
@@ -71,6 +73,7 @@
         "error_on_text_save_not_utf8": "Не удалось сохранить текст, файл не в кодировке UTF-8. Пожалуйста, преобразуйте его в UTF-8 и попробуйте снова.",
         "error_on_text_save": "Не удалось сохранить текст. ",
         "error_unknown_command": "Неизвестная команда. Пожалуйста, используйте /help для получения списка команд.",
+        "error_on_text_rename": "Не удалось переименовать текст",
 
         "warning_first_chunk_cant_go_back":"Нельзя вернуться назад, вы на первом фрагменте",
         "warning_no_texts": "Тексты не найдены, добавьте тексты для чтения",
@@ -83,6 +86,7 @@
         "page_set": "Страница установлена",
         "chunk_size_set": "Размер фрагмента установлен. Но имейте в виду, что текст разбивается на фрагменты при сохранении, и в настоящее время тексты не разбиваются повторно при изменении размера фрагмента",
         "text_saved"  : "Текст <code>{{text_name}}</code> сохранен",
+        "on_text_renamed": "Текст {{text_name}} переименован в <code>{{new_text_name}}</code>",
 
         "previous_button": "⬅️ Назад",
         "next_button": "Вперед ➡️",
