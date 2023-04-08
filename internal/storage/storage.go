@@ -265,8 +265,11 @@ func (s *Storage) deleteTextBy(userID int64, predicate func(Text) bool) error {
 		var found bool
 		for i, text := range texts.Texts {
 			if predicate(text) {
-				if err = tx.DeleteBucket(text.BucketName); err != nil {
-					return err
+				// texts from file share the same bucket between users
+				if text.Source != SourceFile {
+					if err = tx.DeleteBucket(text.BucketName); err != nil && err != bolt.ErrBucketNotFound {
+						return err
+					}
 				}
 				texts.Texts = append(texts.Texts[:i], texts.Texts[i+1:]...)
 				if texts.Current == i {
