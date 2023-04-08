@@ -80,10 +80,6 @@ func run() error {
 	}
 	defer store.Close()
 
-	if err := store.DeleteProcessedFilesWithNonexistentBuckets(); err != nil {
-		return err
-	}
-
 	i18nService := i18n.New()
 	watcher, err := watcher.LoadAndWatch(i18nPath, i18nService)
 	if err != nil {
