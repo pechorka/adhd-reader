@@ -15,8 +15,8 @@ import (
 var ErrNotFound = errors.New("not found")
 
 type translation struct {
-	template *fasttemplate.Template `json:"-"`
-	text     string                 `json:"text"`
+	template *fasttemplate.Template
+	text     string
 }
 
 func (t *translation) UnmarshalJSON(data []byte) error {
@@ -46,7 +46,7 @@ func (l *Localies) Load(path string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { errors.Join(err, f.Close()) }()
+	defer func() { err = errors.Join(err, f.Close()) }()
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
