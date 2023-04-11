@@ -25,9 +25,10 @@ const (
 
 // todo migrate to .env
 type config struct {
-	TgToken string `json:"tg_token"`
-	Debug   bool   `json:"debug"`
-	DbPath  string `json:"db_path"`
+	TgToken string  `json:"tg_token"`
+	Debug   bool    `json:"debug"`
+	DbPath  string  `json:"db_path"`
+	Admins  []int64 `json:"admins"`
 }
 
 func readCfg(path string) (*config, error) {
@@ -98,6 +99,7 @@ func run() error {
 		FileLoader:  fileLoader,
 		I18n:        i18nService,
 		MaxFileSize: defaultMaxFileSize,
+		AdminUsers:  cfg.Admins,
 	})
 	if err != nil {
 		return err

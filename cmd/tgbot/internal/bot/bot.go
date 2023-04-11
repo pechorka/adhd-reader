@@ -1,7 +1,9 @@
 package bot
 
 import (
+	"errors"
 	"fmt"
+	"unicode/utf8"
 
 	"log"
 	"runtime/debug"
@@ -14,8 +16,10 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pechorka/adhd-reader/pkg/contenttype"
+	"github.com/pechorka/adhd-reader/pkg/filechecksum"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/i18n"
+	"github.com/pechorka/adhd-reader/pkg/pdfexctractor"
 	"github.com/pechorka/adhd-reader/pkg/queue"
 	"github.com/pechorka/adhd-reader/pkg/runeslice"
 	"github.com/pechorka/adhd-reader/pkg/sizeconverter"
@@ -26,6 +30,7 @@ const (
 	deleteText = "delete-text:"
 	nextChunk  = "next-chunk"
 	prevChunk  = "prev-chunk"
+	rereadText = "reread-text:"
 )
 
 const (
@@ -39,6 +44,7 @@ type Bot struct {
 	fileLoader  *fileloader.Loader
 	i18n        *i18n.Localies
 	maxFileSize int
+	adminUsers  map[int64]struct{}
 }
 
 type Config struct {
@@ -48,6 +54,7 @@ type Config struct {
 	FileLoader  *fileloader.Loader
 	I18n        *i18n.Localies
 	MaxFileSize int
+	AdminUsers  []int64
 }
 
 func NewBot(cfg Config) (*Bot, error) {
@@ -65,6 +72,10 @@ func NewBot(cfg Config) (*Bot, error) {
 
 	bot.Debug = true // TODO before release take from config
 
+	adminUsers := make(map[int64]struct{}, len(cfg.AdminUsers))
+	for _, id := range cfg.AdminUsers {
+		adminUsers[id] = struct{}{}
+	}
 	return &Bot{
 		service:     cfg.Service,
 		bot:         bot,
@@ -72,6 +83,7 @@ func NewBot(cfg Config) (*Bot, error) {
 		fileLoader:  cfg.FileLoader,
 		i18n:        cfg.I18n,
 		maxFileSize: cfg.MaxFileSize,
+		adminUsers:  adminUsers,
 	}, nil
 }
 
@@ -139,11 +151,13 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 	case "list":
 		b.list(msg)
 	case "page":
-		b.page(msg)
+		b.onPageCommand(msg)
 	case "chunk":
 		b.chunk(msg)
 	case "delete":
 		b.delete(msg)
+	case "rename":
+		b.rename(msg)
 	case "help":
 		b.help(msg)
 	default:
@@ -152,6 +166,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 				return
 			}
 			log.Println("Unknown command: ", cmd)
+			b.replyToUserWithI18n(msg.From, errorUnknownCommandMsgId)
+			return
 		}
 		b.saveTextFromMessage(msg)
 	}
@@ -163,17 +179,13 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		page - set page number, pass page number as argument
 		chunk - set chunk size, pass chunk size as argument
 		delete - delete text, pass text name as argument
+		rename - rename text, pass new name as argument
 		help - troubleshooting and support
 	*/
 }
 
-var admins = map[int64]struct{}{
-	373512635: {},
-	310116972: {},
-}
-
 func (b *Bot) handleAdminMsg(msg *tgbotapi.Message) bool {
-	if _, ok := admins[msg.From.ID]; !ok {
+	if _, ok := b.adminUsers[msg.From.ID]; !ok {
 		return false
 	}
 	switch cmd := msg.Command(); cmd {
@@ -195,9 +207,11 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 	case strings.HasPrefix(cb.Data, deleteText):
 		b.deleteTextCallBack(cb)
 	case cb.Data == nextChunk:
-		b.nextChunk(cb)
+		b.nextChunk(cb.From)
 	case cb.Data == prevChunk:
-		b.prevChunk(cb)
+		b.prevChunk(cb.From)
+	case strings.HasPrefix(cb.Data, rereadText):
+		b.rereadText(cb)
 	}
 	// Respond to the callback query, telling Telegram to show the user
 	// a message with the data received.
@@ -217,7 +231,7 @@ func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
 	b.replyToUserWithI18nWithArgs(cb.From, onTextSelectMsgId, map[string]string{
 		"text_name": currentText.Name,
 	})
-	b.currentChunk(cb)
+	b.currentChunk(cb.From)
 }
 
 func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
@@ -230,50 +244,60 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 	b.replyToUserWithI18n(cb.From, onTextDeletedMsgId)
 }
 
-func (b *Bot) nextChunk(cb *tgbotapi.CallbackQuery) {
-	b.chunkReply(cb, b.service.NextChunk)
+func (b *Bot) nextChunk(from *tgbotapi.User) {
+	b.chunkReply(from, b.service.NextChunk)
 }
 
-func (b *Bot) prevChunk(cb *tgbotapi.CallbackQuery) {
-	b.chunkReply(cb, b.service.PrevChunk)
+func (b *Bot) prevChunk(from *tgbotapi.User) {
+	b.chunkReply(from, b.service.PrevChunk)
 }
 
-func (b *Bot) currentChunk(cb *tgbotapi.CallbackQuery) {
-	b.chunkReply(cb, b.service.CurrentOrFirstChunk)
+func (b *Bot) currentChunk(from *tgbotapi.User) {
+	b.chunkReply(from, b.service.CurrentOrFirstChunk)
+}
+
+func (b *Bot) rereadText(cb *tgbotapi.CallbackQuery) {
+	textUUID := strings.TrimPrefix(cb.Data, rereadText)
+	_, err := b.service.SelectText(cb.From.ID, textUUID)
+	if err != nil {
+		b.replyErrorToUserWithI18n(cb.From, errorOnTextSelectMsgId, err)
+		return
+	}
+	b.setPage(cb.From, 0)
 }
 
 type chunkSelectorFunc func(userID int64) (storage.Text, string, service.ChunkType, error)
 
-func (b *Bot) chunkReply(cb *tgbotapi.CallbackQuery, chunkSelector chunkSelectorFunc) {
-	currentText, chunkText, chunkType, err := chunkSelector(cb.From.ID)
-	prevBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, previousButtonMsgId), prevChunk)
-	nextBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, nextButtonMsgId), nextChunk)
-	deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, deleteButtonMsgId), deleteText+currentText.UUID)
-	rereadBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(cb.From, rereadButtonMsgId), textSelect+currentText.UUID)
+func (b *Bot) chunkReply(from *tgbotapi.User, chunkSelector chunkSelectorFunc) {
+	currentText, chunkText, chunkType, err := chunkSelector(from.ID)
+	prevBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, previousButtonMsgId), prevChunk)
+	nextBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, nextButtonMsgId), nextChunk)
+	deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, deleteButtonMsgId), deleteText+currentText.UUID)
+	rereadBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(from, rereadButtonMsgId), rereadText+currentText.UUID)
 	// #29 TODO code for reread button
 	switch err {
 	case service.ErrFirstChunk:
-		b.replyToUserWithI18n(cb.From, warningFirstChunkCantGoBackMsgId, nextBtn)
+		b.replyToUserWithI18n(from, warningFirstChunkCantGoBackMsgId, nextBtn)
 		return
 	case service.ErrTextFinished:
-		b.replyToUserWithI18nWithArgs(cb.From, textFinishedMsgId, map[string]string{
+		b.replyToUserWithI18nWithArgs(from, textFinishedMsgId, map[string]string{
 			"text_name": currentText.Name,
 		}, prevBtn, deleteBtn)
 	case nil:
 	default:
-		b.replyErrorToUserWithI18n(cb.From, erroroOnGettingNextChunk, err)
+		b.replyErrorToUserWithI18n(from, erroroOnGettingNextChunk, err)
 		return
 	}
 
 	switch chunkType {
 	case service.ChunkTypeFirst:
-		b.replyWithText(cb.Message, chunkText, nextBtn)
+		b.replyWithPlainText(from, chunkText, nextBtn)
 	case service.ChunkTypeLast:
-		b.replyToUserWithI18nWithArgs(cb.From, lastChunkMsgId, map[string]string{
+		b.replyToUserWithI18nWithArgs(from, lastChunkMsgId, map[string]string{
 			"text_name": currentText.Name,
 		}, prevBtn, deleteBtn, rereadBtn)
 	default:
-		b.replyWithText(cb.Message, chunkText, prevBtn, nextBtn)
+		b.replyWithPlainText(from, chunkText, prevBtn, nextBtn)
 	}
 }
 
@@ -348,23 +372,28 @@ func completionPercentString(percent int) string {
 	}
 }
 
-func (b *Bot) page(msg *tgbotapi.Message) {
+func (b *Bot) onPageCommand(msg *tgbotapi.Message) {
 	strPage := msg.CommandArguments()
 	page, err := strconv.ParseInt(strings.TrimSpace(strPage), 10, 64)
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnParsingPageMsgId, err)
 		return
 	}
-	err = b.service.SetPage(msg.From.ID, page)
+	b.setPage(msg.From, page)
+}
+
+func (b *Bot) setPage(from *tgbotapi.User, page int64) {
+	err := b.service.SetPage(from.ID, page)
 	if err != nil {
 		if err == service.ErrTextNotSelected {
-			b.replyToMsgWithI18n(msg, errorOnSettingPageNoTextSelectedMsgId)
+			b.replyToUserWithI18n(from, errorOnSettingPageNoTextSelectedMsgId)
 			return
 		}
-		b.replyErrorWithI18n(msg, errorOnSettingPageMsgId, err)
+		b.replyErrorToUserWithI18n(from, errorOnSettingPageMsgId, err)
 		return
 	}
-	b.replyToMsgWithI18n(msg, pageSetMsgId)
+	b.replyToUserWithI18n(from, pageSetMsgId)
+	b.currentChunk(from)
 }
 
 func (b *Bot) chunk(msg *tgbotapi.Message) {
@@ -392,6 +421,19 @@ func (b *Bot) delete(msg *tgbotapi.Message) {
 	b.replyToMsgWithI18n(msg, onTextDeletedMsgId)
 }
 
+func (b *Bot) rename(msg *tgbotapi.Message) {
+	newName := strings.TrimSpace(msg.CommandArguments())
+	oldName, err := b.service.RenameText(msg.From.ID, newName)
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnTextRenameMsgId, err)
+		return
+	}
+	b.replyToMsgWithI18nWithArgs(msg, onTextRenamedMsgId, map[string]string{
+		"text_name":     oldName,
+		"new_text_name": newName,
+	})
+}
+
 func (b *Bot) help(msg *tgbotapi.Message) {
 	b.replyToMsgWithI18n(msg, helpMsg)
 }
@@ -403,17 +445,18 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 		})
 		return
 	}
-	if !contenttype.IsPlainText(msg.Document.MimeType) {
+	switch {
+	case contenttype.IsPlainText(msg.Document.MimeType):
+	case contenttype.IsPDF(msg.Document.MimeType):
+	default:
 		b.replyToMsgWithI18n(msg, errorOnFileUploadInvalidFormatMsgId)
-		return
 	}
 	fileURL, err := b.bot.GetFileDirectURL(msg.Document.FileID)
 	if err != nil {
-
 		b.replyErrorWithI18n(msg, errorOnFileUploadBuildingFileURLMsgId, err)
 		return
 	}
-	text, err := b.fileLoader.DownloadTextFile(fileURL)
+	data, err := b.fileLoader.DownloadFile(fileURL)
 	switch err {
 	case nil:
 	case fileloader.ErrFileIsTooBig:
@@ -421,18 +464,38 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 			"max_file_size": sizeconverter.HumanReadableSizeInMB(b.maxFileSize),
 		})
 		return
-	case fileloader.ErrNotPlainText:
-		b.replyToMsgWithI18n(msg, errorOnFileUploadInvalidFormatMsgId)
-		return
 	default:
 		b.replyErrorWithI18n(msg, errorOnFileUploadMsgId, err)
 		return
 	}
 
-	textID, err := b.service.AddText(msg.From.ID, msg.Document.FileName, text)
+	var text string
+	switch {
+	case contenttype.IsPlainText(msg.Document.MimeType):
+		text = string(data)
+	case contenttype.IsPDF(msg.Document.MimeType):
+		text, err = pdfexctractor.ExtractPlainTextFromPDF(data)
+	}
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnFileUploadExtractingTextMsgId, err)
+		return
+	}
+
+	textID, err := b.service.AddTextFromFile(
+		msg.From.ID,
+		filechecksum.Calculate(data),
+		msg.Document.FileName, text,
+	)
 	if err != nil {
 		if err == service.ErrTextNotUTF8 {
 			b.replyToMsgWithI18n(msg, errorOnTextSaveNotUTF8MsgId)
+			return
+		}
+		var alreadyExists *storage.TextAlreadyExistsError
+		if errors.As(err, &alreadyExists) {
+			b.replyToMsgWithI18nWithArgs(msg, errorOnTextSaveAlreadyExistsMsgId, map[string]string{
+				"text_name": alreadyExists.ExistingText.Name,
+			})
 			return
 		}
 		b.replyErrorWithI18n(msg, errorOnTextSaveMsgId, err)
@@ -455,8 +518,12 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 
 func (b *Bot) onQueueFilled(userID int64, msgText string) {
 	//@pechorka, не получилось, потому что там надо получать language code, а по юзер ИД такое нельзя сделать
+	textName, _, ok := strings.Cut(msgText, "\n")
+	const maxTextNameLength = 64
+	if !ok || utf8.RuneCountInString(textName) > maxTextNameLength {
+		textName = strings.TrimSpace(runeslice.NRunes(msgText, maxTextNameLength))
+	}
 
-	textName := runeslice.NRunes(msgText, 64)
 	textID, err := b.service.AddText(userID, textName, msgText)
 	if err != nil {
 		b.sendToUser(userID, "Failed to save text: "+err.Error())
@@ -471,6 +538,11 @@ func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbota
 	msg := tgbotapi.NewMessage(to.Chat.ID, text)
 	msg.ReplyToMessageID = to.MessageID
 	return b.sendMsg(msg, buttons...)
+}
+
+func (b *Bot) replyWithPlainText(to *tgbotapi.User, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	msg := tgbotapi.NewMessage(to.ID, text)
+	return b.sendPlainTextMsg(msg, buttons...)
 }
 
 func (b *Bot) replyErrorWithI18n(msg *tgbotapi.Message, id string, err error, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
@@ -551,16 +623,27 @@ func (b *Bot) sendTyping(to *tgbotapi.Message) {
 
 func (b *Bot) sendMsg(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
 	if len(buttons) > 0 {
-		rowButtons := make([][]tgbotapi.InlineKeyboardButton, 0, len(buttons))
-		for _, btn := range buttons {
-			rowButtons = append(rowButtons, tgbotapi.NewInlineKeyboardRow(btn))
-		}
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			rowButtons...,
-		)
+		msg.ReplyMarkup = buildReplyMarkup(buttons...)
 	}
 	msg.ParseMode = tgbotapi.ModeHTML
 	return b.send(msg)
+}
+
+func (b *Bot) sendPlainTextMsg(msg tgbotapi.MessageConfig, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
+	if len(buttons) > 0 {
+		msg.ReplyMarkup = buildReplyMarkup(buttons...)
+	}
+	return b.send(msg)
+}
+
+func buildReplyMarkup(buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.InlineKeyboardMarkup {
+	rowButtons := make([][]tgbotapi.InlineKeyboardButton, 0, len(buttons))
+	for _, btn := range buttons {
+		rowButtons = append(rowButtons, tgbotapi.NewInlineKeyboardRow(btn))
+	}
+	return tgbotapi.NewInlineKeyboardMarkup(
+		rowButtons...,
+	)
 }
 
 func (b *Bot) send(msg tgbotapi.Chattable) tgbotapi.Message {

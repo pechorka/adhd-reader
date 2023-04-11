@@ -11,3 +11,7 @@ func IsPlainText(contentType string) bool {
 	}
 	return false
 }
+
+func IsPDF(contentType string) bool {
+	return strings.HasPrefix(contentType, "application/pdf")
+}

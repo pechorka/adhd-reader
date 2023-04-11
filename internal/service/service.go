@@ -36,23 +36,14 @@ func (s *Service) SetChunkSize(userID int64, chunkSize int64) error {
 }
 
 func (s *Service) AddText(userID int64, textName, text string) (string, error) {
-	if textName == "" {
-		return "", errors.New("text name is empty")
-	}
-	if len(textName) > 255 {
-		return "", errors.Errorf("text name %s is too long, max length is 255 (less if you use emojis/non-ascii symbols)", textName)
-	}
-	if !utf8.ValidString(text) {
-		return "", ErrTextNotUTF8
-	}
-	chunkSize, err := s.s.GetChunkSize(userID)
+	chunkSize, err := s.getChunkSize(userID)
 	if err != nil {
 		return "", err
 	}
-	if chunkSize == 0 {
-		chunkSize = s.chunkSize
+	textChunks, err := s.processText(userID, textName, text, chunkSize)
+	if err != nil {
+		return "", err
 	}
-	textChunks := textspliter.SplitText(text, int(chunkSize))
 	data := storage.NewText{
 		Name:      textName,
 		Chunks:    textChunks,
@@ -60,6 +51,64 @@ func (s *Service) AddText(userID int64, textName, text string) (string, error) {
 		ChunkSize: chunkSize,
 	}
 	return s.s.AddText(userID, data)
+}
+
+func (s *Service) AddTextFromFile(userID int64, checksum []byte, name, text string) (string, error) {
+	chunkSize, err := s.getChunkSize(userID)
+	if err != nil {
+		return "", err
+	}
+	pf, err := s.s.GetProcessedFileByChecksum(checksum)
+	switch err {
+	case nil:
+		// can reuse processed file if chunk size is the same
+		if pf.ChunkSize == chunkSize {
+			return s.s.AddTextFromProcessedFile(userID, name, pf)
+		}
+	case storage.ErrNotFound:
+	default:
+		return "", err
+	}
+
+	textChunks, err := s.processText(userID, name, text, chunkSize)
+	if err != nil {
+		return "", err
+	}
+
+	pf, err = s.s.AddProcessedFile(storage.NewProcessedFile{
+		Text:      text,
+		Chunks:    textChunks,
+		ChunkSize: chunkSize,
+		CheckSum:  checksum,
+	})
+	if err != nil {
+		return "", err
+	}
+	return s.s.AddTextFromProcessedFile(userID, name, pf)
+}
+
+func (s *Service) processText(userID int64, textName, text string, chunkSize int64) ([]string, error) {
+	if textName == "" {
+		return nil, errors.New("text name is empty")
+	}
+	if len(textName) > 255 {
+		return nil, errors.Errorf("text name %s is too long, max length is 255 (less if you use emojis/non-ascii symbols)", textName)
+	}
+	if !utf8.ValidString(text) {
+		return nil, ErrTextNotUTF8
+	}
+	return textspliter.SplitText(text, int(chunkSize)), nil
+}
+
+func (s *Service) getChunkSize(userID int64) (int64, error) {
+	chunkSize, err := s.s.GetChunkSize(userID)
+	if err != nil {
+		return 0, err
+	}
+	if chunkSize == 0 {
+		chunkSize = s.chunkSize
+	}
+	return chunkSize, nil
 }
 
 type TextWithCompletion struct {
@@ -104,6 +153,27 @@ func (s *Service) SelectText(userID int64, textUUID string) (storage.Text, error
 		return errors.Errorf("text with uuid %s not found", textUUID)
 	})
 	return text, err
+}
+
+func (s *Service) RenameText(userID int64, newName string) (string, error) {
+	if newName == "" {
+		return "", errors.New("text name is empty")
+	}
+	oldName := ""
+	err := s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
+		if texts.Current == storage.NotSelected {
+			return errors.New("no text selected")
+		}
+		for _, t := range texts.Texts {
+			if t.Name == newName {
+				return errors.Errorf("text with name %s already exists", newName)
+			}
+		}
+		oldName = texts.Texts[texts.Current].Name
+		texts.Texts[texts.Current].Name = newName
+		return nil
+	})
+	return oldName, err
 }
 
 func (s *Service) SetPage(userID, page int64) error {
