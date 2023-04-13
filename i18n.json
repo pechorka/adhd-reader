@@ -22,6 +22,7 @@
         "error_on_text_save_already_exists": "You already have same file by the name <code>{{text_name}}</code>.",
         "error_unknown_command": "Unknown command. Please use /help to get a list of available commands",
         "error_on_text_rename": "Failed to rename text",
+        "error_on_full_text_encode": "Failed to encode full texts",
 
         "warning_first_chunk_cant_go_back":"Can't go back, you are at the first chunk",
         "warning_no_texts": "No texts found, please add some texts to read",
@@ -76,6 +77,7 @@
         "error_on_text_save_already_exists": "У вас уже есть такой же файл в библиотеке под именем <code>{{text_name}}</code>.",
         "error_unknown_command": "Неизвестная команда. Пожалуйста, используйте /help для получения списка команд.",
         "error_on_text_rename": "Не удалось переименовать текст",
+        "error_on_full_text_encode": "Не удалось закодировать полные тексты",
 
         "warning_first_chunk_cant_go_back":"Нельзя вернуться назад, вы на первом фрагменте",
         "warning_no_texts": "Тексты не найдены, добавьте тексты для чтения",

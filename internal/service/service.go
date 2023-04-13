@@ -133,6 +133,10 @@ func (s *Service) ListTexts(userID int64) ([]TextWithCompletion, error) {
 	return result, nil
 }
 
+func (s *Service) FullTexts(userID int64) ([]storage.FullText, error) {
+	return s.s.GetFullTexts(userID)
+}
+
 func calculateCompletionPercent(text storage.TextWithChunkInfo) int {
 	if text.TotalChunks-1 <= 0 || text.CurrentChunk == storage.NotSelected {
 		return 0

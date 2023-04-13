@@ -35,6 +35,7 @@ const (
 	errorOnTextSaveAlreadyExistsMsgId     = "error_on_text_save_already_exists"
 	errorUnknownCommandMsgId              = "error_unknown_command"
 	errorOnTextRenameMsgId                = "error_on_text_rename"
+	errorOnFullTextEncode                 = "error_on_full_text_encode"
 )
 
 const (

@@ -27,6 +27,13 @@ type TextWithChunkInfo struct {
 	TotalChunks  int64
 }
 
+type FullText struct {
+	UUID         string
+	Name         string
+	CurrentChunk int64
+	Chunks       []string
+}
+
 type NewText struct {
 	Name      string
 	Text      string

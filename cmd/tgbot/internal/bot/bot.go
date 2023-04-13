@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"unicode/utf8"
@@ -158,6 +159,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.delete(msg)
 	case "rename":
 		b.rename(msg)
+	case "download":
+		b.download(msg)
 	case "help":
 		b.help(msg)
 	default:
@@ -180,6 +183,7 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		chunk - set chunk size, pass chunk size as argument
 		delete - delete text, pass text name as argument
 		rename - rename text, pass new name as argument
+		download - download all texts in json format
 		help - troubleshooting and support
 	*/
 }
@@ -432,6 +436,46 @@ func (b *Bot) rename(msg *tgbotapi.Message) {
 		"text_name":     oldName,
 		"new_text_name": newName,
 	})
+}
+
+func (b *Bot) download(msg *tgbotapi.Message) {
+	texts, err := b.service.FullTexts(msg.From.ID)
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnListMsgId, err)
+		return
+	}
+
+	type OutputText struct {
+		TextName     string   `json:"textName"`
+		CurrentChunk int64    `json:"currentChunk"`
+		Chunks       []string `json:"chunks"`
+	}
+
+	type Output struct {
+		Texts []OutputText `json:"texts"`
+	}
+
+	outTexts := make([]OutputText, 0, len(texts))
+	for _, t := range texts {
+		outTexts = append(outTexts, OutputText{
+			TextName:     t.Name,
+			CurrentChunk: t.CurrentChunk,
+			Chunks:       t.Chunks,
+		})
+	}
+
+	out := Output{
+		Texts: outTexts,
+	}
+
+	outBytes, err := json.Marshal(out)
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnFullTextEncode, err)
+		return
+	}
+
+	doc := tgbotapi.FileBytes{Name: "all_texts.json", Bytes: outBytes}
+	b.send(tgbotapi.NewDocument(msg.Chat.ID, doc))
 }
 
 func (b *Bot) help(msg *tgbotapi.Message) {

@@ -190,6 +190,24 @@ func (s *Storage) GetTexts(id int64) ([]TextWithChunkInfo, error) {
 	return result, err
 }
 
+func (s *Storage) GetFullTexts(id int64) ([]FullText, error) {
+	var result []FullText
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktUserInfo)
+		if b == nil {
+			return nil
+		}
+		var err error
+		texts, err := getTexts(b, textsId(id))
+		if err != nil {
+			return err
+		}
+		result, err = fullTexts(tx, texts)
+		return err
+	})
+	return result, err
+}
+
 type UpdateTextsFunc func(*UserTexts) error
 
 func (s *Storage) UpdateTexts(userID int64, updFunc UpdateTextsFunc) error {
@@ -445,6 +463,28 @@ func enrichTexts(tx *bolt.Tx, texts UserTexts) ([]TextWithChunkInfo, error) {
 			Name:         text.Name,
 			CurrentChunk: text.CurrentChunk,
 			TotalChunks:  totalChunks,
+		})
+	}
+	return result, nil
+}
+
+func fullTexts(tx *bolt.Tx, texts UserTexts) ([]FullText, error) {
+	result := make([]FullText, 0, len(texts.Texts))
+	for _, text := range texts.Texts {
+		textBucket := tx.Bucket(text.BucketName)
+		if textBucket == nil {
+			return nil, errors.New("unexpected error: text bucket not found")
+		}
+		totalChunks := bytesToInt64(textBucket.Get(totalChunksKey))
+		chunks := make([]string, 0, totalChunks)
+		for i := int64(0); i < totalChunks; i++ {
+			chunks = append(chunks, string(textBucket.Get(int64ToBytes(i))))
+		}
+		result = append(result, FullText{
+			UUID:         text.UUID,
+			Name:         text.Name,
+			CurrentChunk: text.CurrentChunk,
+			Chunks:       chunks,
 		})
 	}
 	return result, nil
