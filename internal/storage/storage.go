@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -86,12 +87,15 @@ func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
 		if err != nil {
 			return err
 		}
+		now := time.Now()
 		texts.Texts = append(texts.Texts, Text{
 			UUID:         textUUID,
 			Name:         newText.Name,
 			Source:       SourceText,
 			BucketName:   textBucketName,
 			CurrentChunk: NotSelected,
+			CreatedAt:    now,
+			ModifiedAt:   now,
 		})
 		if err = putTexts(b, id, texts); err != nil {
 			return err
@@ -119,12 +123,15 @@ func (s *Storage) AddTextFromProcessedFile(userId int64, name string, pf Process
 		); err != nil {
 			return err
 		}
+		now := time.Now()
 		texts.Texts = append(texts.Texts, Text{
 			UUID:         pf.UUID,
 			Name:         name,
 			Source:       SourceFile,
 			BucketName:   pf.BucketName,
 			CurrentChunk: NotSelected,
+			CreatedAt:    now,
+			ModifiedAt:   now,
 		})
 		if err = putTexts(b, id, texts); err != nil {
 			return err
@@ -256,6 +263,7 @@ func (s *Storage) SelectChunk(userID int64, updFunc SelectChunkFunc) (string, er
 			return err
 		}
 		curText.CurrentChunk = nextChunk
+		curText.ModifiedAt = time.Now()
 		texts.Texts[texts.Current] = curText
 		if err = putTexts(b, id, texts); err != nil {
 			return err

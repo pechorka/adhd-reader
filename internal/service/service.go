@@ -1,6 +1,7 @@
 package service
 
 import (
+	"time"
 	"unicode/utf8"
 
 	"github.com/pechorka/adhd-reader/internal/storage"
@@ -150,6 +151,7 @@ func (s *Service) SelectText(userID int64, textUUID string) (storage.Text, error
 		for i, t := range texts.Texts {
 			if t.UUID == textUUID {
 				texts.Current = i
+				texts.Texts[i].ModifiedAt = time.Now()
 				text = t
 				return nil
 			}
@@ -175,6 +177,7 @@ func (s *Service) RenameText(userID int64, newName string) (string, error) {
 		}
 		oldName = texts.Texts[texts.Current].Name
 		texts.Texts[texts.Current].Name = newName
+		texts.Texts[texts.Current].ModifiedAt = time.Now()
 		return nil
 	})
 	return oldName, err

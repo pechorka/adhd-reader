@@ -1,5 +1,7 @@
 package storage
 
+import "time"
+
 type UserTexts struct {
 	Texts   []Text
 	Current int // index of current text
@@ -18,6 +20,8 @@ type Text struct {
 	Source       TextSource
 	BucketName   []byte
 	CurrentChunk int64
+	CreatedAt    time.Time
+	ModifiedAt   time.Time
 }
 
 type TextWithChunkInfo struct {
