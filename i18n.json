@@ -25,6 +25,7 @@
         "error_on_full_text_encode": "Failed to encode full texts",
         "error_on_parsing_list_page": "Failed to parse list page",
         "error_empty_chunk": "Something went wrong. Chunk is unexpectedly empty. Probably some error happened while I tried to save text. You can safely delete this text (<code>{{text_name}}</code> and try to add it again later. Sorry for inconvenience.",
+        "error_on_random_text": "Failed to get random text",
 
         "warning_first_chunk_cant_go_back":"Can't go back, you are at the first chunk",
         "warning_no_texts": "No texts found, please add some texts to read",
@@ -83,6 +84,7 @@
         "error_on_full_text_encode": "Не удалось закодировать полные тексты",
         "error_on_parsing_list_page": "Не удалось разобрать номер страницы списка",
         "error_empty_chunk": "Что-то пошло не так. Фрагмент неожиданно пуст. Возможно, произошла ошибка при попытке сохранить текст. Вы можете безопасно удалить этот текст (<code>{{text_name}}</code>) и попробовать добавить его снова позже. Извините за неудобства.",
+        "error_on_random_text": "Не удалось получить случайный текст",
 
         "warning_first_chunk_cant_go_back":"Нельзя вернуться назад, вы на первом фрагменте",
         "warning_no_texts": "Тексты не найдены, добавьте тексты для чтения",

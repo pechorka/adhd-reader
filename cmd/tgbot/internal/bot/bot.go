@@ -165,6 +165,10 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.download(msg)
 	case "help":
 		b.help(msg)
+	case "random":
+		b.random(msg, -1)
+	case "random50":
+		b.random(msg, 50)
 	default:
 		if cmd != "" {
 			if b.handleAdminMsg(msg) {
@@ -209,7 +213,7 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 
 	switch {
 	case strings.HasPrefix(cb.Data, textSelect):
-		b.selectText(cb)
+		b.selectTextCallBack(cb)
 	case strings.HasPrefix(cb.Data, deleteText):
 		b.deleteTextCallBack(cb)
 	case cb.Data == nextChunk:
@@ -229,17 +233,21 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 	}
 }
 
-func (b *Bot) selectText(cb *tgbotapi.CallbackQuery) {
+func (b *Bot) selectTextCallBack(cb *tgbotapi.CallbackQuery) {
 	textUUID := strings.TrimPrefix(cb.Data, textSelect)
-	currentText, err := b.service.SelectText(cb.From.ID, textUUID)
+	b.selectText(cb.From, textUUID)
+}
+
+func (b *Bot) selectText(from *tgbotapi.User, textUUID string) {
+	currentText, err := b.service.SelectText(from.ID, textUUID)
 	if err != nil {
-		b.replyErrorToUserWithI18n(cb.From, errorOnTextSelectMsgId, err)
+		b.replyErrorToUserWithI18n(from, errorOnTextSelectMsgId, err)
 		return
 	}
-	b.replyToUserWithI18nWithArgs(cb.From, onTextSelectMsgId, map[string]string{
+	b.replyToUserWithI18nWithArgs(from, onTextSelectMsgId, map[string]string{
 		"text_name": currentText.Name,
 	})
-	b.currentChunk(cb.From)
+	b.currentChunk(from)
 }
 
 func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
@@ -507,6 +515,15 @@ func (b *Bot) download(msg *tgbotapi.Message) {
 
 func (b *Bot) help(msg *tgbotapi.Message) {
 	b.replyToMsgWithI18n(msg, helpMsg)
+}
+
+func (b *Bot) random(msg *tgbotapi.Message, atMostChunks int64) {
+	text, err := b.service.RandomText(msg.From.ID, atMostChunks)
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnRandomTextMsgId, err)
+		return
+	}
+	b.selectText(msg.From, text.UUID)
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {

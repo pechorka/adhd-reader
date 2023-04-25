@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math/rand"
 	"time"
 	"unicode/utf8"
 
@@ -162,6 +163,33 @@ func calculateCompletionPercent(text storage.TextWithChunkInfo) int {
 		return 0
 	}
 	return int(float64(text.CurrentChunk) / float64(text.TotalChunks-1) * 100)
+}
+
+func (s *Service) RandomText(userID int64, atMostChunks int64) (storage.TextWithChunkInfo, error) {
+	texts, err := s.s.GetTexts(userID)
+	if err != nil {
+		return storage.TextWithChunkInfo{}, err
+	}
+	if atMostChunks > 0 {
+		texts = filterTextsByChunkCount(texts, atMostChunks)
+	}
+	if len(texts) == 0 {
+		return storage.TextWithChunkInfo{}, errors.New("no texts")
+	}
+	return texts[rand.Intn(len(texts))], nil
+}
+
+func filterTextsByChunkCount(texts []storage.TextWithChunkInfo, atMostChunks int64) []storage.TextWithChunkInfo {
+	if atMostChunks <= 0 {
+		return texts
+	}
+	result := make([]storage.TextWithChunkInfo, 0, len(texts))
+	for _, t := range texts {
+		if t.TotalChunks <= atMostChunks {
+			result = append(result, t)
+		}
+	}
+	return result
 }
 
 func (s *Service) SelectText(userID int64, textUUID string) (storage.Text, error) {
