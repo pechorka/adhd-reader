@@ -23,11 +23,42 @@ func TestService_ListTexts(t *testing.T) {
 	text3ID, err := srv.AddText(userID, "text3Name", "text3")
 	require.NoError(t, err)
 
-	texts, err := srv.ListTexts(userID)
+	texts, more, err := srv.ListTexts(userID, 1, 50)
 	require.NoError(t, err)
+	require.False(t, more)
 	require.Equal(t, text1ID, texts[0].UUID)
 	require.Equal(t, text2ID, texts[1].UUID)
 	require.Equal(t, text3ID, texts[2].UUID)
+}
+
+func TestService_ListTextsPagination(t *testing.T) {
+	srv := NewService(testStorage(t), 100)
+	userID := rand.Int63()
+
+	text1ID, err := srv.AddText(userID, "text1Name", "text1")
+	require.NoError(t, err)
+	text2ID, err := srv.AddText(userID, "text2Name", "text2")
+	require.NoError(t, err)
+	text3ID, err := srv.AddText(userID, "text3Name", "text3")
+	require.NoError(t, err)
+
+	texts, more, err := srv.ListTexts(userID, 1, 1)
+	require.NoError(t, err)
+	require.True(t, more)
+	require.Len(t, texts, 1)
+	require.Equal(t, text1ID, texts[0].UUID)
+
+	texts, more, err = srv.ListTexts(userID, 2, 1)
+	require.NoError(t, err)
+	require.True(t, more)
+	require.Len(t, texts, 1)
+	require.Equal(t, text2ID, texts[0].UUID)
+
+	texts, more, err = srv.ListTexts(userID, 3, 1)
+	require.NoError(t, err)
+	require.False(t, more)
+	require.Len(t, texts, 1)
+	require.Equal(t, text3ID, texts[0].UUID)
 }
 
 func TestService_SelectText(t *testing.T) {
@@ -68,8 +99,9 @@ func TestService_DeleteTextByUUID(t *testing.T) {
 	text3ID, err := srv.AddText(userID, "text3Name", "text3")
 	require.NoError(t, err)
 
-	texts, err := srv.ListTexts(userID)
+	texts, more, err := srv.ListTexts(userID, 1, 50)
 	require.NoError(t, err)
+	require.False(t, more)
 	require.Len(t, texts, 3)
 	require.Equal(t, text1ID, texts[0].UUID)
 	require.Equal(t, text2ID, texts[1].UUID)
@@ -81,8 +113,9 @@ func TestService_DeleteTextByUUID(t *testing.T) {
 	err = srv.DeleteTextByUUID(userID, text2ID)
 	require.NoError(t, err)
 
-	texts, err = srv.ListTexts(userID)
+	texts, more, err = srv.ListTexts(userID, 1, 50)
 	require.NoError(t, err)
+	require.False(t, more)
 	require.Len(t, texts, 2)
 	require.Equal(t, text1ID, texts[0].UUID)
 	require.Equal(t, text3ID, texts[1].UUID)
@@ -99,8 +132,9 @@ func TestService_DeleteTextByName(t *testing.T) {
 	_, err = srv.AddText(userID, "text3Name", "text3")
 	require.NoError(t, err)
 
-	texts, err := srv.ListTexts(userID)
+	texts, more, err := srv.ListTexts(userID, 1, 50)
 	require.NoError(t, err)
+	require.False(t, more)
 	require.Len(t, texts, 3)
 	require.Equal(t, "text1Name", texts[0].Name)
 	require.Equal(t, "text2Name", texts[1].Name)
@@ -112,8 +146,9 @@ func TestService_DeleteTextByName(t *testing.T) {
 	err = srv.DeleteTextByName(userID, "text2Name")
 	require.NoError(t, err)
 
-	texts, err = srv.ListTexts(userID)
+	texts, more, err = srv.ListTexts(userID, 1, 50)
 	require.NoError(t, err)
+	require.False(t, more)
 	require.Len(t, texts, 2)
 	require.Equal(t, "text1Name", texts[0].Name)
 	require.Equal(t, "text3Name", texts[1].Name)

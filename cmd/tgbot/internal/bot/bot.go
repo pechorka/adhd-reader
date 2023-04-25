@@ -32,10 +32,12 @@ const (
 	nextChunk  = "next-chunk"
 	prevChunk  = "prev-chunk"
 	rereadText = "reread-text:"
+	nextPage   = "next-page:"
 )
 
 const (
 	defaultMaxFileSize = 20 * 1024 * 1024 // 20 MB
+	defaultPageSize    = 50
 )
 
 type Bot struct {
@@ -150,7 +152,7 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 	case "start":
 		b.start(msg)
 	case "list":
-		b.list(msg)
+		b.listCmd(msg)
 	case "page":
 		b.onPageCommand(msg)
 	case "chunk":
@@ -216,6 +218,8 @@ func (b *Bot) handleCallback(cb *tgbotapi.CallbackQuery) {
 		b.prevChunk(cb.From)
 	case strings.HasPrefix(cb.Data, rereadText):
 		b.rereadText(cb)
+	case strings.HasPrefix(cb.Data, nextPage):
+		b.nextListPage(cb)
 	}
 	// Respond to the callback query, telling Telegram to show the user
 	// a message with the data received.
@@ -270,6 +274,15 @@ func (b *Bot) rereadText(cb *tgbotapi.CallbackQuery) {
 	b.setPage(cb.From, 0)
 }
 
+func (b *Bot) nextListPage(cb *tgbotapi.CallbackQuery) {
+	page, err := strconv.Atoi(strings.TrimPrefix(cb.Data, nextPage))
+	if err != nil {
+		b.replyErrorToUserWithI18n(cb.From, errorOnParsingListPageMsgId, err)
+		return
+	}
+	b.list(cb.From, page, defaultPageSize)
+}
+
 type chunkSelectorFunc func(userID int64) (storage.Text, string, service.ChunkType, error)
 
 func (b *Bot) chunkReply(from *tgbotapi.User, chunkSelector chunkSelectorFunc) {
@@ -290,6 +303,13 @@ func (b *Bot) chunkReply(from *tgbotapi.User, chunkSelector chunkSelectorFunc) {
 	case nil:
 	default:
 		b.replyErrorToUserWithI18n(from, erroroOnGettingNextChunk, err)
+		return
+	}
+
+	if chunkText == "" && chunkType != service.ChunkTypeLast {
+		b.replyToUserWithI18nWithArgs(from, errorEmptyChunkMsgId, map[string]string{
+			"text_name": currentText.Name,
+		}, deleteBtn)
 		return
 	}
 
@@ -346,14 +366,18 @@ func (b *Bot) start(msg *tgbotapi.Message) {
 	}()
 }
 
-func (b *Bot) list(msg *tgbotapi.Message) {
-	texts, err := b.service.ListTexts(msg.From.ID)
+func (b *Bot) listCmd(msg *tgbotapi.Message) {
+	b.list(msg.From, 1, defaultPageSize)
+}
+
+func (b *Bot) list(from *tgbotapi.User, page, pageSize int) {
+	texts, more, err := b.service.ListTexts(from.ID, page, pageSize)
 	if err != nil {
-		b.replyErrorWithI18n(msg, errorOnListMsgId, err)
+		b.replyErrorToUserWithI18n(from, errorOnListMsgId, err)
 		return
 	}
 	if len(texts) == 0 {
-		b.replyToMsgWithI18n(msg, warningNoTextsMsgId)
+		b.replyToUserWithI18n(from, warningNoTextsMsgId)
 		return
 	}
 	// reply with button for each text and save text index in callback data
@@ -362,7 +386,10 @@ func (b *Bot) list(msg *tgbotapi.Message) {
 		btnText := completionPercentString(t.CompletionPercent) + " " + t.Name
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(btnText, textSelect+t.UUID))
 	}
-	b.replyToMsgWithI18n(msg, onListMsgId, buttons...)
+	if more {
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(b.getText(from, nextButtonMsgId), nextPage+strconv.Itoa(page+1)))
+	}
+	b.replyToUserWithI18n(from, onListMsgId, buttons...)
 }
 
 func completionPercentString(percent int) string {
@@ -470,7 +497,7 @@ func (b *Bot) download(msg *tgbotapi.Message) {
 
 	outBytes, err := json.Marshal(out)
 	if err != nil {
-		b.replyErrorWithI18n(msg, errorOnFullTextEncode, err)
+		b.replyErrorWithI18n(msg, errorOnFullTextEncodeMsgId, err)
 		return
 	}
 

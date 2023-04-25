@@ -35,7 +35,9 @@ const (
 	errorOnTextSaveAlreadyExistsMsgId     = "error_on_text_save_already_exists"
 	errorUnknownCommandMsgId              = "error_unknown_command"
 	errorOnTextRenameMsgId                = "error_on_text_rename"
-	errorOnFullTextEncode                 = "error_on_full_text_encode"
+	errorOnFullTextEncodeMsgId            = "error_on_full_text_encode"
+	errorOnParsingListPageMsgId           = "error_on_parsing_list_page"
+	errorEmptyChunkMsgId                  = "error_empty_chunk"
 )
 
 const (
@@ -57,6 +59,7 @@ const (
 	deleteButtonWithTextNameMsgId = "delete_button_with_text_name"
 	readButtonMsgId               = "read_button"
 	rereadButtonMsgId             = "reread_button"
+	nextPageButtonMsgId           = "next_page_button"
 )
 
 const (

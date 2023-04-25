@@ -118,11 +118,12 @@ type TextWithCompletion struct {
 	CompletionPercent int
 }
 
-func (s *Service) ListTexts(userID int64) ([]TextWithCompletion, error) {
+func (s *Service) ListTexts(userID int64, page, pageSize int) (_ []TextWithCompletion, more bool, err error) {
 	texts, err := s.s.GetTexts(userID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
+	texts, more = paginateTexts(texts, page, pageSize)
 	result := make([]TextWithCompletion, 0, len(texts))
 	for _, t := range texts {
 		result = append(result, TextWithCompletion{
@@ -131,7 +132,25 @@ func (s *Service) ListTexts(userID int64) ([]TextWithCompletion, error) {
 			CompletionPercent: calculateCompletionPercent(t),
 		})
 	}
-	return result, nil
+	return result, more, nil
+}
+
+func paginateTexts(texts []storage.TextWithChunkInfo, page, pageSize int) ([]storage.TextWithChunkInfo, bool) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	start := (page - 1) * pageSize
+	end := start + pageSize
+	if start > len(texts) {
+		return nil, false
+	}
+	if end > len(texts) {
+		end = len(texts)
+	}
+	return texts[start:end], end < len(texts)
 }
 
 func (s *Service) FullTexts(userID int64) ([]storage.FullText, error) {
