@@ -21,6 +21,7 @@ const NotSelected = -1
 var (
 	bktUserInfo       = []byte("user_info")
 	bktProcessedFiles = []byte("processed_files")
+	bktDust           = []byte("dust")
 )
 
 var (
@@ -433,6 +434,24 @@ func (s *Storage) Analytics() ([]UserAnalytics, error) {
 	return result, err
 }
 
+func (s *Storage) UpdateDust(userID int64, updFunc func(*Dust)) (*Dust, error) {
+	var dust Dust
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktDust)
+		if err != nil {
+			return err
+		}
+		id := int64ToBytes(userID)
+		dust, err = s.getDust(b, id)
+		if err != nil {
+			return err
+		}
+		updFunc(&dust)
+		return s.putDust(b, id, dust)
+	})
+	return &dust, err
+}
+
 // helper functions
 
 var textsPrefix = []byte("texts-")
@@ -563,6 +582,26 @@ func fillTextBucket(tx *bolt.Tx, text string, chunks []string) ([]byte, error) {
 		}
 	}
 	return textBucketName, nil
+}
+
+func (s *Storage) getDust(b *bolt.Bucket, id []byte) (dust Dust, err error) {
+	v := b.Get(id)
+	if v == nil {
+		return dust, nil
+	}
+	err = json.Unmarshal(v, &dust)
+	if err != nil {
+		return dust, errors.Wrap(err, "failed to unmarshal dust")
+	}
+	return dust, nil
+}
+
+func (s *Storage) putDust(b *bolt.Bucket, id []byte, dust Dust) error {
+	encoded, err := json.Marshal(dust)
+	if err != nil {
+		return err
+	}
+	return b.Put(id, encoded)
 }
 
 func int64ToBytes(i int64) []byte {

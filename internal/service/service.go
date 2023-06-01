@@ -7,6 +7,7 @@ import (
 
 	"github.com/pechorka/adhd-reader/internal/storage"
 
+	"github.com/pechorka/adhd-reader/pkg/chance"
 	"github.com/pechorka/adhd-reader/pkg/textspliter"
 	"github.com/pkg/errors"
 )
@@ -18,13 +19,16 @@ var ErrTextNotUTF8 = errors.New("text is not valid utf8")
 
 const telegramMessageLengthLimit = 4096
 
+type chanceFunc func(percent float64) bool
+
 type Service struct {
-	s         *storage.Storage
-	chunkSize int64
+	s          *storage.Storage
+	chanceFunc chanceFunc
+	chunkSize  int64
 }
 
 func NewService(s *storage.Storage, chunkSize int64) *Service {
-	return &Service{s: s, chunkSize: chunkSize}
+	return &Service{s: s, chunkSize: chunkSize, chanceFunc: chance.Win}
 }
 
 func (s *Service) SetChunkSize(userID int64, chunkSize int64) error {
@@ -387,4 +391,28 @@ func (s *Service) Analytics() ([]UserAnalytics, *TotalAnalytics, error) {
 		AverageChunkSize:       averageChunkSize,
 	}
 	return result, totalAnalytics, nil
+}
+
+type CurrentDust struct {
+	RedCount int64
+}
+
+func (s *Service) DustOnNextChunk(userID int64) (*CurrentDust, error) {
+	var redDust int64
+	if s.chanceFunc(0.02) {
+		redDust = 1
+	}
+	dbDust, err := s.s.UpdateDust(userID, func(d *storage.Dust) {
+		d.RedCount += redDust
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapDbDustToCurrentDust(dbDust), nil
+}
+
+func mapDbDustToCurrentDust(dbDust *storage.Dust) *CurrentDust {
+	return &CurrentDust{
+		RedCount: dbDust.RedCount,
+	}
 }

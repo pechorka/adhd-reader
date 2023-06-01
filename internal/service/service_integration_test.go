@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pechorka/adhd-reader/internal/storage"
@@ -233,9 +234,39 @@ func TestService_SetChunkSize(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestDustOnNextChunk(t *testing.T) {
+	t.Run("dust is added", func(t *testing.T) {
+		store := testStorage(t)
+		srv := NewService(store, 5)
+		srv.chanceFunc = func(percent float64) bool {
+			return true
+		}
+
+		userID := rand.Int63()
+
+		dust, err := srv.DustOnNextChunk(userID)
+		require.NoError(t, err)
+		require.EqualValues(t, 1, dust.RedCount)
+	})
+
+	t.Run("dust is not added", func(t *testing.T) {
+		store := testStorage(t)
+		srv := NewService(store, 5)
+		srv.chanceFunc = func(percent float64) bool {
+			return false
+		}
+
+		userID := rand.Int63()
+
+		dust, err := srv.DustOnNextChunk(userID)
+		require.NoError(t, err)
+		require.EqualValues(t, 0, dust.RedCount)
+	})
+}
+
 func testStorage(t *testing.T) *storage.Storage {
 	t.Helper()
-	dbPath := fmt.Sprintf("/tmp/zone-mate-test-%d.db", rand.Int63())
+	dbPath := filepath.Join(os.TempDir(), fmt.Sprintf("adhd-reader-test-%d.db", rand.Int63()))
 	storage, err := storage.NewStorage(dbPath)
 	require.NoError(t, err)
 	t.Cleanup(func() {

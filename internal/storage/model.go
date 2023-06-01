@@ -66,3 +66,7 @@ type ProcessedFile struct {
 	ChunkSize  int64
 	CheckSum   []byte
 }
+
+type Dust struct {
+	RedCount int64
+}

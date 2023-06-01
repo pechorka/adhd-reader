@@ -261,6 +261,7 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 }
 
 func (b *Bot) nextChunk(from *tgbotapi.User) {
+	b.service.DustOnNextChunk(from.ID)
 	b.chunkReply(from, b.service.NextChunk)
 }
 
