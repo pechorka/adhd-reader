@@ -19,16 +19,19 @@ var ErrTextNotUTF8 = errors.New("text is not valid utf8")
 
 const telegramMessageLengthLimit = 4096
 
-type chanceFunc func(percent float64) bool
+type Chancer interface {
+	Win(percent float64) bool
+	PickWin(inputs ...chance.WinInput)
+}
 
 type Service struct {
-	s          *storage.Storage
-	chanceFunc chanceFunc
-	chunkSize  int64
+	s         *storage.Storage
+	chancer   Chancer
+	chunkSize int64
 }
 
 func NewService(s *storage.Storage, chunkSize int64) *Service {
-	return &Service{s: s, chunkSize: chunkSize, chanceFunc: chance.Win}
+	return &Service{s: s, chunkSize: chunkSize, chancer: chance.Default}
 }
 
 func (s *Service) SetChunkSize(userID int64, chunkSize int64) error {
@@ -399,7 +402,7 @@ type CurrentDust struct {
 
 func (s *Service) DustOnNextChunk(userID int64) (*CurrentDust, error) {
 	var redDust int64
-	if s.chanceFunc(0.02) {
+	if s.chancer.Win(0.02) {
 		redDust = 1
 	}
 	dbDust, err := s.s.UpdateDust(userID, func(d *storage.Dust) {

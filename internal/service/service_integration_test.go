@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pechorka/adhd-reader/internal/storage"
+	"github.com/pechorka/adhd-reader/pkg/chance"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -238,8 +239,8 @@ func TestDustOnNextChunk(t *testing.T) {
 	t.Run("dust is added", func(t *testing.T) {
 		store := testStorage(t)
 		srv := NewService(store, 5)
-		srv.chanceFunc = func(percent float64) bool {
-			return true
+		srv.chancer = &mockChancer{
+			winResult: true,
 		}
 
 		userID := rand.Int63()
@@ -252,8 +253,8 @@ func TestDustOnNextChunk(t *testing.T) {
 	t.Run("dust is not added", func(t *testing.T) {
 		store := testStorage(t)
 		srv := NewService(store, 5)
-		srv.chanceFunc = func(percent float64) bool {
-			return false
+		srv.chancer = &mockChancer{
+			winResult: false,
 		}
 
 		userID := rand.Int63()
@@ -277,4 +278,22 @@ func testStorage(t *testing.T) *storage.Storage {
 	})
 
 	return storage
+}
+
+type mockChancer struct {
+	winResult     bool
+	pickWinResult float64
+}
+
+func (m *mockChancer) Win(percent float64) bool {
+	return m.winResult
+}
+
+func (m *mockChancer) PickWin(inputs ...chance.WinInput) {
+	for _, input := range inputs {
+		if input.Percent == m.pickWinResult {
+			input.Action()
+			return
+		}
+	}
 }
