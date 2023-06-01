@@ -544,3 +544,15 @@ func (dust Dust) TotalDust() int64 {
 func (herb Herb) TotalHerb() int64 {
 	return herb.LavandaCount + herb.MelissaCount
 }
+
+func (s *Service) GetLoot(userID int64) (*Dust, *Herb, error) {
+	dbDust, err := s.s.GetDustByUserID(userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	dbHerb, err := s.s.GetHerbByUserID(userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return mapDbDustToCurrentDust(&dbDust), mapDbHerbToCurrentHerb(&dbHerb), nil
+}

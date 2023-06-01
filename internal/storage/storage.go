@@ -615,6 +615,19 @@ func (s *Storage) getDust(b *bolt.Bucket, id []byte) (dust Dust, err error) {
 	return dust, nil
 }
 
+func (s *Storage) GetDustByUserID(userID int64) (dust Dust, err error) {
+	err = s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktDust)
+		if b == nil {
+			return nil
+		}
+		id := int64ToBytes(userID)
+		dust, err = s.getDust(b, id)
+		return err
+	})
+	return dust, err
+}
+
 func (s *Storage) putDust(b *bolt.Bucket, id []byte, dust Dust) error {
 	encoded, err := json.Marshal(dust)
 	if err != nil {
@@ -633,6 +646,19 @@ func (s *Storage) getHerb(b *bolt.Bucket, id []byte) (herb Herb, err error) {
 		return herb, errors.Wrap(err, "failed to unmarshal herb")
 	}
 	return herb, nil
+}
+
+func (s *Storage) GetHerbByUserID(userID int64) (herb Herb, err error) {
+	err = s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktHerb)
+		if b == nil {
+			return nil
+		}
+		id := int64ToBytes(userID)
+		herb, err = s.getHerb(b, id)
+		return err
+	})
+	return herb, err
 }
 
 func (s *Storage) putHerb(b *bolt.Bucket, id []byte, herb Herb) error {

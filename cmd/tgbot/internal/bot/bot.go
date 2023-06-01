@@ -169,6 +169,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.random(msg, -1)
 	case "random50":
 		b.random(msg, 50)
+	case "loot":
+		b.loot(msg)
 	default:
 		if cmd != "" {
 			if b.handleAdminMsg(msg) {
@@ -266,7 +268,7 @@ func (b *Bot) nextChunk(from *tgbotapi.User) {
 		b.replyErrorToUser(from, errorOnGettingLootMsgId, err)
 	} else {
 		if deltaDust.TotalDust() > 0 || deltaHerb.TotalHerb() > 0 {
-			b.replyWithPlainText(from, "🎉 "+DustToString(&deltaDust, 1)+" 🎊 "+HerbToString(&deltaHerb, 1))
+			b.replyWithPlainText(from, "🎉 "+DustToString(&deltaDust, " ")+" 🎊 "+HerbToString(&deltaHerb, " "))
 		}
 	}
 
@@ -535,6 +537,14 @@ func (b *Bot) random(msg *tgbotapi.Message, atMostChunks int64) {
 	b.selectText(msg.From, text.UUID)
 }
 
+func (b *Bot) loot(msg *tgbotapi.Message) {
+	dust, herb, err := b.service.GetLoot(msg.From.ID)
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnGettingLootMsgId, err)
+	}
+	b.replyWithPlainText(msg.From, DustToString(dust, "/n")+"/n /n"+HerbToString(herb, "/n"))
+}
+
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	if msg.Document.FileSize != 0 && msg.Document.FileSize > b.maxFileSize {
 		b.replyToMsgWithI18nWithArgs(msg, errorOnFileUploadTooBigMsgId, map[string]string{
@@ -771,12 +781,8 @@ func getLanguageCode(user *tgbotapi.User) string {
 	return lang
 }
 
-func DustToString(dust *service.Dust, separator int) string {
+func DustToString(dust *service.Dust, spt string) string {
 	var result string
-	spt := " "
-	if separator == 0 {
-		spt = "\n"
-	}
 	if dust.BlackCount > 0 {
 		result += "🖤 " + strconv.FormatInt(dust.BlackCount, 10) + spt
 	}
@@ -807,17 +813,13 @@ func DustToString(dust *service.Dust, separator int) string {
 	return result
 }
 
-func HerbToString(herb *service.Herb, separator int) string {
+func HerbToString(herb *service.Herb, spt string) string {
 	var result string
-	spt := " "
-	if separator == 0 {
-		spt = "\n"
-	}
 	if herb.MelissaCount > 0 {
 		result += "🌿 " + strconv.FormatInt(herb.MelissaCount, 10) + spt
 	}
 	if herb.LavandaCount > 0 {
-		result += "🌿 " + strconv.FormatInt(herb.LavandaCount, 10) + spt
+		result += "🌿🌿 " + strconv.FormatInt(herb.LavandaCount, 10) + spt
 	}
 	return result
 }
