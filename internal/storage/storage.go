@@ -22,6 +22,7 @@ var (
 	bktUserInfo       = []byte("user_info")
 	bktProcessedFiles = []byte("processed_files")
 	bktDust           = []byte("dust")
+	bktHerb           = []byte("herb")
 )
 
 var (
@@ -452,6 +453,24 @@ func (s *Storage) UpdateDust(userID int64, updFunc func(*Dust)) (*Dust, error) {
 	return &dust, err
 }
 
+func (s *Storage) UpdateHerb(userID int64, updFunc func(*Herb)) (*Herb, error) {
+	var herb Herb
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktHerb)
+		if err != nil {
+			return err
+		}
+		id := int64ToBytes(userID)
+		herb, err = s.getHerb(b, id)
+		if err != nil {
+			return err
+		}
+		updFunc(&herb)
+		return s.putHerb(b, id, herb)
+	})
+	return &herb, err
+}
+
 // helper functions
 
 var textsPrefix = []byte("texts-")
@@ -598,6 +617,26 @@ func (s *Storage) getDust(b *bolt.Bucket, id []byte) (dust Dust, err error) {
 
 func (s *Storage) putDust(b *bolt.Bucket, id []byte, dust Dust) error {
 	encoded, err := json.Marshal(dust)
+	if err != nil {
+		return err
+	}
+	return b.Put(id, encoded)
+}
+
+func (s *Storage) getHerb(b *bolt.Bucket, id []byte) (herb Herb, err error) {
+	v := b.Get(id)
+	if v == nil {
+		return herb, nil
+	}
+	err = json.Unmarshal(v, &herb)
+	if err != nil {
+		return herb, errors.Wrap(err, "failed to unmarshal herb")
+	}
+	return herb, nil
+}
+
+func (s *Storage) putHerb(b *bolt.Bucket, id []byte, herb Herb) error {
+	encoded, err := json.Marshal(herb)
 	if err != nil {
 		return err
 	}

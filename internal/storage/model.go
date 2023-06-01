@@ -68,5 +68,18 @@ type ProcessedFile struct {
 }
 
 type Dust struct {
-	RedCount int64
+	RedCount    int64
+	OrangeCount int64
+	YellowCount int64
+	GreenCount  int64
+	BlueCount   int64
+	IndigoCount int64
+	PurpleCount int64
+	WhiteCount  int64
+	BlackCount  int64
+}
+
+type Herb struct {
+	LavandaCount int64
+	MelissaCount int64
 }

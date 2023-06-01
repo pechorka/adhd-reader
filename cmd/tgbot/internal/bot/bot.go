@@ -261,7 +261,15 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 }
 
 func (b *Bot) nextChunk(from *tgbotapi.User) {
-	b.service.DustOnNextChunk(from.ID)
+	_, _, deltaDust, deltaHerb, err := b.service.LootOnNextChunk(from.ID)
+	if err != nil {
+		b.replyErrorToUser(from, errorOnGettingLootMsgId, err)
+	} else {
+		if service.TotalDust(deltaDust) > 0 || service.TotalHerb(deltaHerb) > 0 {
+			b.replyToUserWithI18n(from, "🎉 "+DustToString(&deltaDust, 1)+" 🎊 "+HerbToString(&deltaHerb, 1))
+		}
+	}
+
 	b.chunkReply(from, b.service.NextChunk)
 }
 
@@ -761,4 +769,55 @@ func getLanguageCode(user *tgbotapi.User) string {
 		lang = langCodeRu
 	}
 	return lang
+}
+
+func DustToString(dust *service.Dust, separator int) string {
+	var result string
+	spt := " "
+	if separator == 0 {
+		spt = "\n"
+	}
+	if dust.BlackCount > 0 {
+		result += "🖤 " + strconv.FormatInt(dust.BlackCount, 10) + spt
+	}
+	if dust.WhiteCount > 0 {
+		result += "🤍 " + strconv.FormatInt(dust.WhiteCount, 10) + spt
+	}
+	if dust.PurpleCount > 0 {
+		result += "💜 " + strconv.FormatInt(dust.PurpleCount, 10) + spt
+	}
+	if dust.YellowCount > 0 {
+		result += "💛 " + strconv.FormatInt(dust.YellowCount, 10) + spt
+	}
+	if dust.RedCount > 0 {
+		result += "❤️ " + strconv.FormatInt(dust.RedCount, 10) + spt
+	}
+	if dust.OrangeCount > 0 {
+		result += "🧡 " + strconv.FormatInt(dust.OrangeCount, 10) + spt
+	}
+	if dust.GreenCount > 0 {
+		result += "💚 " + strconv.FormatInt(dust.GreenCount, 10) + spt
+	}
+	if dust.BlueCount > 0 {
+		result += "💠 " + strconv.FormatInt(dust.BlueCount, 10) + spt
+	}
+	if dust.IndigoCount > 0 {
+		result += "💙 " + strconv.FormatInt(dust.IndigoCount, 10) + spt
+	}
+	return result
+}
+
+func HerbToString(herb *service.Herb, separator int) string {
+	var result string
+	spt := " "
+	if separator == 0 {
+		spt = "\n"
+	}
+	if herb.MelissaCount > 0 {
+		result += "🌿 " + strconv.FormatInt(herb.MelissaCount, 10) + spt
+	}
+	if herb.LavandaCount > 0 {
+		result += "🌿 " + strconv.FormatInt(herb.LavandaCount, 10) + spt
+	}
+	return result
 }

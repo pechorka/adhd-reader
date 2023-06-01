@@ -396,26 +396,151 @@ func (s *Service) Analytics() ([]UserAnalytics, *TotalAnalytics, error) {
 	return result, totalAnalytics, nil
 }
 
-type CurrentDust struct {
-	RedCount int64
+type Dust struct {
+	RedCount    int64
+	OrangeCount int64
+	YellowCount int64
+	GreenCount  int64
+	BlueCount   int64
+	IndigoCount int64
+	PurpleCount int64
+	WhiteCount  int64
+	BlackCount  int64
 }
 
-func (s *Service) DustOnNextChunk(userID int64) (*CurrentDust, error) {
-	var redDust int64
-	if s.chancer.Win(0.02) {
-		redDust = 1
+type Herb struct {
+	LavandaCount int64
+	MelissaCount int64
+}
+
+func (s *Service) LootOnNextChunk(userID int64) (*Dust, *Herb, Dust, Herb, error) {
+	var deltaDust Dust
+	var deltaHerb Herb
+	// 1.9% chance to get Herb
+	if s.chancer.Win(0.019) {
+		s.chancer.PickWin(
+			chance.WinInput{
+				Percent: 0.7,
+				Action: func() {
+					deltaHerb.MelissaCount++
+				},
+			},
+			chance.WinInput{
+				Percent: 0.3,
+				Action: func() {
+					deltaHerb.LavandaCount++
+				},
+			},
+		)
 	}
+	// 33% chance to get Dust
+	if s.chancer.Win(0.33) {
+		s.chancer.PickWin(
+			chance.WinInput{
+				Percent: 0.25,
+				Action: func() {
+					deltaDust.RedCount++
+				},
+			},
+			chance.WinInput{
+				Percent: 0.03,
+				Action: func() {
+					deltaDust.OrangeCount++
+				},
+			},
+			chance.WinInput{
+				Percent: 0.25,
+				Action: func() {
+					deltaDust.YellowCount++
+				},
+			},
+			chance.WinInput{
+				Percent: 0.142,
+				Action: func() {
+					deltaDust.GreenCount++
+				},
+			},
+			chance.WinInput{
+				Percent: 0.13,
+				Action: func() {
+					deltaDust.BlueCount++
+				},
+			},
+			chance.WinInput{
+				Percent: 0.13,
+				Action: func() {
+					deltaDust.IndigoCount++
+				},
+			},
+			chance.WinInput{
+				Percent: 0.03,
+				Action: func() {
+					deltaDust.PurpleCount++
+				},
+			},
+			chance.WinInput{
+				Percent: 0.019,
+				Action: func() {
+					deltaDust.WhiteCount++
+				},
+			},
+			chance.WinInput{
+				Percent: 0.019,
+				Action: func() {
+					deltaDust.BlackCount++
+				},
+			},
+		)
+	}
+
 	dbDust, err := s.s.UpdateDust(userID, func(d *storage.Dust) {
-		d.RedCount += redDust
+		d.RedCount += deltaDust.RedCount
+		d.OrangeCount += deltaDust.OrangeCount
+		d.YellowCount += deltaDust.YellowCount
+		d.GreenCount += deltaDust.GreenCount
+		d.BlueCount += deltaDust.BlueCount
+		d.IndigoCount += deltaDust.IndigoCount
+		d.PurpleCount += deltaDust.PurpleCount
+		d.WhiteCount += deltaDust.WhiteCount
+		d.BlackCount += deltaDust.BlackCount
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, Dust{}, Herb{}, err
 	}
-	return mapDbDustToCurrentDust(dbDust), nil
+	dbHerb, err := s.s.UpdateHerb(userID, func(d *storage.Herb) {
+		d.MelissaCount += deltaHerb.MelissaCount
+		d.LavandaCount += deltaHerb.LavandaCount
+	})
+	if err != nil {
+		return nil, nil, Dust{}, Herb{}, err
+	}
+	return mapDbDustToCurrentDust(dbDust), mapDbHerbToCurrentHerb(dbHerb), deltaDust, deltaHerb, nil
 }
 
-func mapDbDustToCurrentDust(dbDust *storage.Dust) *CurrentDust {
-	return &CurrentDust{
-		RedCount: dbDust.RedCount,
+func mapDbDustToCurrentDust(dbDust *storage.Dust) *Dust {
+	return &Dust{
+		RedCount:    dbDust.RedCount,
+		OrangeCount: dbDust.OrangeCount,
+		YellowCount: dbDust.YellowCount,
+		GreenCount:  dbDust.GreenCount,
+		BlueCount:   dbDust.BlueCount,
+		IndigoCount: dbDust.IndigoCount,
+		PurpleCount: dbDust.PurpleCount,
+		WhiteCount:  dbDust.WhiteCount,
+		BlackCount:  dbDust.BlackCount,
 	}
+}
+func mapDbHerbToCurrentHerb(dbHerb *storage.Herb) *Herb {
+	return &Herb{
+		LavandaCount: dbHerb.LavandaCount,
+		MelissaCount: dbHerb.MelissaCount,
+	}
+}
+
+func TotalDust(dust Dust) int64 {
+	return dust.RedCount + dust.OrangeCount + dust.YellowCount + dust.GreenCount + dust.BlueCount + dust.IndigoCount + dust.PurpleCount + dust.WhiteCount + dust.BlackCount
+}
+
+func TotalHerb(herb Herb) int64 {
+	return herb.LavandaCount + herb.MelissaCount
 }

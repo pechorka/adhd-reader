@@ -39,6 +39,7 @@ const (
 	errorOnParsingListPageMsgId           = "error_on_parsing_list_page"
 	errorEmptyChunkMsgId                  = "error_empty_chunk"
 	errorOnRandomTextMsgId                = "error_on_random_text"
+	errorOnGettingLootMsgId               = "error_on_getting_loot"
 )
 
 const (

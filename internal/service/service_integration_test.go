@@ -245,7 +245,7 @@ func TestDustOnNextChunk(t *testing.T) {
 
 		userID := rand.Int63()
 
-		dust, err := srv.DustOnNextChunk(userID)
+		dust, _, _, _, err := srv.LootOnNextChunk(userID)
 		require.NoError(t, err)
 		require.EqualValues(t, 1, dust.RedCount)
 	})
@@ -259,7 +259,7 @@ func TestDustOnNextChunk(t *testing.T) {
 
 		userID := rand.Int63()
 
-		dust, err := srv.DustOnNextChunk(userID)
+		dust, _, _, _, err := srv.LootOnNextChunk(userID)
 		require.NoError(t, err)
 		require.EqualValues(t, 0, dust.RedCount)
 	})
