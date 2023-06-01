@@ -265,7 +265,7 @@ func (b *Bot) nextChunk(from *tgbotapi.User) {
 	if err != nil {
 		b.replyErrorToUser(from, errorOnGettingLootMsgId, err)
 	} else {
-		if service.TotalDust(deltaDust) > 0 || service.TotalHerb(deltaHerb) > 0 {
+		if deltaDust.TotalDust() > 0 || deltaHerb.TotalHerb() > 0 {
 			b.replyToUserWithI18n(from, "🎉 "+DustToString(&deltaDust, 1)+" 🎊 "+HerbToString(&deltaHerb, 1))
 		}
 	}

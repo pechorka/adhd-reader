@@ -537,10 +537,10 @@ func mapDbHerbToCurrentHerb(dbHerb *storage.Herb) *Herb {
 	}
 }
 
-func TotalDust(dust Dust) int64 {
+func (dust Dust) TotalDust() int64 {
 	return dust.RedCount + dust.OrangeCount + dust.YellowCount + dust.GreenCount + dust.BlueCount + dust.IndigoCount + dust.PurpleCount + dust.WhiteCount + dust.BlackCount
 }
 
-func TotalHerb(herb Herb) int64 {
+func (herb Herb) TotalHerb() int64 {
 	return herb.LavandaCount + herb.MelissaCount
 }
