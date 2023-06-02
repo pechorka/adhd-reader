@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -49,7 +50,7 @@ func NewStorage(path string) (*Storage, error) {
 }
 
 func NewTempStorage() (*Storage, error) {
-	path := fmt.Sprintf("/tmp/%s.db", uuid.New().String())
+	path := filepath.Join(os.TempDir(), fmt.Sprintf("adhd-reader-%s.db", uuid.New().String()))
 	storage, err := NewStorage(path)
 	if err != nil {
 		return nil, err
