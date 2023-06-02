@@ -413,86 +413,15 @@ type Herb struct {
 	MelissaCount int64
 }
 
-func (s *Service) LootOnNextChunk(userID int64) (*Dust, *Herb, Dust, Herb, error) {
-	var deltaDust Dust
-	var deltaHerb Herb
-	// 1.9% chance to get Herb
-	if s.chancer.Win(0.019) {
-		s.chancer.PickWin(
-			chance.WinInput{
-				Percent: 0.7,
-				Action: func() {
-					deltaHerb.MelissaCount++
-				},
-			},
-			chance.WinInput{
-				Percent: 0.3,
-				Action: func() {
-					deltaHerb.LavandaCount++
-				},
-			},
-		)
-	}
-	// 33% chance to get Dust
-	if s.chancer.Win(0.33) {
-		s.chancer.PickWin(
-			chance.WinInput{
-				Percent: 0.25,
-				Action: func() {
-					deltaDust.RedCount++
-				},
-			},
-			chance.WinInput{
-				Percent: 0.03,
-				Action: func() {
-					deltaDust.OrangeCount++
-				},
-			},
-			chance.WinInput{
-				Percent: 0.25,
-				Action: func() {
-					deltaDust.YellowCount++
-				},
-			},
-			chance.WinInput{
-				Percent: 0.142,
-				Action: func() {
-					deltaDust.GreenCount++
-				},
-			},
-			chance.WinInput{
-				Percent: 0.13,
-				Action: func() {
-					deltaDust.BlueCount++
-				},
-			},
-			chance.WinInput{
-				Percent: 0.13,
-				Action: func() {
-					deltaDust.IndigoCount++
-				},
-			},
-			chance.WinInput{
-				Percent: 0.03,
-				Action: func() {
-					deltaDust.PurpleCount++
-				},
-			},
-			chance.WinInput{
-				Percent: 0.019,
-				Action: func() {
-					deltaDust.WhiteCount++
-				},
-			},
-			chance.WinInput{
-				Percent: 0.019,
-				Action: func() {
-					deltaDust.BlackCount++
-				},
-			},
-		)
-	}
+type LootResult struct {
+	DeltaDust *Dust
+	TotalDust *Dust
+	DeltaHerb *Herb
+	TotalHerb *Herb
+}
 
+func (s *Service) LootOnNextChunk(userID int64) (*LootResult, error) {
+	deltaDust := s.findDust()
 	dbDust, err := s.s.UpdateDust(userID, func(d *storage.Dust) {
 		d.RedCount += deltaDust.RedCount
 		d.OrangeCount += deltaDust.OrangeCount
@@ -505,19 +434,113 @@ func (s *Service) LootOnNextChunk(userID int64) (*Dust, *Herb, Dust, Herb, error
 		d.BlackCount += deltaDust.BlackCount
 	})
 	if err != nil {
-		return nil, nil, Dust{}, Herb{}, err
+		return nil, errors.Wrap(err, "failed to update dust")
 	}
+	deltaHerb := s.findHerb()
 	dbHerb, err := s.s.UpdateHerb(userID, func(d *storage.Herb) {
 		d.MelissaCount += deltaHerb.MelissaCount
 		d.LavandaCount += deltaHerb.LavandaCount
 	})
 	if err != nil {
-		return nil, nil, Dust{}, Herb{}, err
+		return nil, errors.Wrap(err, "failed to update herb")
 	}
-	return mapDbDustToCurrentDust(dbDust), mapDbHerbToCurrentHerb(dbHerb), deltaDust, deltaHerb, nil
+	return &LootResult{
+		DeltaDust: &deltaDust,
+		TotalDust: mapDbDustToDust(dbDust),
+		DeltaHerb: &deltaHerb,
+		TotalHerb: mapDbHerbToHerb(dbHerb),
+	}, nil
 }
 
-func mapDbDustToCurrentDust(dbDust *storage.Dust) *Dust {
+func (s *Service) findHerb() Herb {
+	var deltaHerb Herb
+	// 1.9% chance to get Herb
+	if !s.chancer.Win(0.019) {
+		return deltaHerb
+	}
+	s.chancer.PickWin(
+		chance.WinInput{
+			Percent: 0.7,
+			Action: func() {
+				deltaHerb.MelissaCount++
+			},
+		},
+		chance.WinInput{
+			Percent: 0.3,
+			Action: func() {
+				deltaHerb.LavandaCount++
+			},
+		},
+	)
+	return deltaHerb
+}
+
+func (s *Service) findDust() Dust {
+	var deltaDust Dust
+	// 33% chance to get Dust
+	if !s.chancer.Win(0.33) {
+		return deltaDust
+	}
+	s.chancer.PickWin(
+		chance.WinInput{
+			Percent: 0.25,
+			Action: func() {
+				deltaDust.RedCount++
+			},
+		},
+		chance.WinInput{
+			Percent: 0.03,
+			Action: func() {
+				deltaDust.OrangeCount++
+			},
+		},
+		chance.WinInput{
+			Percent: 0.25,
+			Action: func() {
+				deltaDust.YellowCount++
+			},
+		},
+		chance.WinInput{
+			Percent: 0.142,
+			Action: func() {
+				deltaDust.GreenCount++
+			},
+		},
+		chance.WinInput{
+			Percent: 0.13,
+			Action: func() {
+				deltaDust.BlueCount++
+			},
+		},
+		chance.WinInput{
+			Percent: 0.13,
+			Action: func() {
+				deltaDust.IndigoCount++
+			},
+		},
+		chance.WinInput{
+			Percent: 0.03,
+			Action: func() {
+				deltaDust.PurpleCount++
+			},
+		},
+		chance.WinInput{
+			Percent: 0.019,
+			Action: func() {
+				deltaDust.WhiteCount++
+			},
+		},
+		chance.WinInput{
+			Percent: 0.019,
+			Action: func() {
+				deltaDust.BlackCount++
+			},
+		},
+	)
+	return deltaDust
+}
+
+func mapDbDustToDust(dbDust *storage.Dust) *Dust {
 	return &Dust{
 		RedCount:    dbDust.RedCount,
 		OrangeCount: dbDust.OrangeCount,
@@ -530,7 +553,7 @@ func mapDbDustToCurrentDust(dbDust *storage.Dust) *Dust {
 		BlackCount:  dbDust.BlackCount,
 	}
 }
-func mapDbHerbToCurrentHerb(dbHerb *storage.Herb) *Herb {
+func mapDbHerbToHerb(dbHerb *storage.Herb) *Herb {
 	return &Herb{
 		LavandaCount: dbHerb.LavandaCount,
 		MelissaCount: dbHerb.MelissaCount,
@@ -554,5 +577,5 @@ func (s *Service) GetLoot(userID int64) (*Dust, *Herb, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return mapDbDustToCurrentDust(&dbDust), mapDbHerbToCurrentHerb(&dbHerb), nil
+	return mapDbDustToDust(&dbDust), mapDbHerbToHerb(&dbHerb), nil
 }

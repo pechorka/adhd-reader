@@ -263,18 +263,18 @@ func (b *Bot) deleteTextCallBack(cb *tgbotapi.CallbackQuery) {
 }
 
 func (b *Bot) nextChunk(from *tgbotapi.User) {
-	_, _, deltaDust, deltaHerb, err := b.service.LootOnNextChunk(from.ID)
+	loot, err := b.service.LootOnNextChunk(from.ID)
 	if err != nil {
 		b.replyErrorToUser(from, errorOnGettingLootMsgId, err)
 	} else {
-		if deltaDust.TotalDust() > 0 || deltaHerb.TotalHerb() > 0 {
-			if deltaDust.TotalDust() > 0 && deltaHerb.TotalHerb() > 0 {
-				b.replyWithPlainText(from, "🎉 "+DustToString(&deltaDust, " ")+" 🎊 "+HerbToString(&deltaHerb, " "))
+		if loot.DeltaDust.TotalDust() > 0 || loot.DeltaHerb.TotalHerb() > 0 {
+			if loot.DeltaDust.TotalDust() > 0 && loot.DeltaHerb.TotalHerb() > 0 {
+				b.replyWithPlainText(from, "🎉 "+DustToString(loot.DeltaDust, " ")+" 🎊 "+HerbToString(loot.DeltaHerb, " "))
 			} else {
-				if deltaDust.TotalDust() > 0 {
-					b.replyWithPlainText(from, "🎉 "+DustToString(&deltaDust, " "))
+				if loot.DeltaDust.TotalDust() > 0 {
+					b.replyWithPlainText(from, "🎉 "+DustToString(loot.DeltaDust, " "))
 				} else {
-					b.replyWithPlainText(from, "🎊 "+HerbToString(&deltaHerb, " "))
+					b.replyWithPlainText(from, "🎊 "+HerbToString(loot.DeltaHerb, " "))
 				}
 			}
 
