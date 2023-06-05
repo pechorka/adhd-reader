@@ -72,3 +72,31 @@ func TestGetLevelByExperience(t *testing.T) {
 		})
 	}
 }
+
+func Test_calculateExperienceGainByChunkSize(t *testing.T) {
+	type args struct {
+		chunkSize int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want int64
+	}{
+		{name: "0", args: args{chunkSize: 0}, want: 2},
+		{name: "1", args: args{chunkSize: 1}, want: 1},
+		{name: "250", args: args{chunkSize: 250}, want: 1},
+		{name: "500", args: args{chunkSize: 500}, want: 2},
+		{name: "501", args: args{chunkSize: 501}, want: 2},
+		{name: "501", args: args{chunkSize: 751}, want: 3},
+		{name: "1000", args: args{chunkSize: 1000}, want: 4},
+		{name: "1250", args: args{chunkSize: 1250}, want: 5},
+		{name: "1500", args: args{chunkSize: 1500}, want: 6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := calculateExperienceGainByChunkSize(tt.args.chunkSize); got != tt.want {
+				t.Errorf("calculateExperienceGainByChunkSize() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

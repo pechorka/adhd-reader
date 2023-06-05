@@ -466,7 +466,13 @@ func (s *Service) LootOnNextChunk(userID int64) (*LootResult, error) {
 
 // currentLevel, deltaExp,levelUp?, err
 func (s *Service) ExpOnNextChunk(userID int64) (*Level, int64, bool, error) {
-	deltaExp := int64(2) //TODO determine by chunk size
+	deltaExp := int64(2)
+	//TODO determine by chunk size of TEXT not user
+	userChunkSize, err := s.getChunkSize(userID)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	deltaExp = calculateExperienceGainByChunkSize(userChunkSize)
 	levelUp := false
 	oldExperience, err := s.s.GetLevelByUserID(userID)
 	if err != nil {
@@ -486,6 +492,17 @@ func (s *Service) ExpOnNextChunk(userID int64) (*Level, int64, bool, error) {
 	}
 
 	return mapDbLevelToServiceLevel(dbLevel), deltaExp, levelUp, nil
+}
+
+func calculateExperienceGainByChunkSize(chunkSize int64) int64 {
+	if chunkSize <= 0 {
+		return int64(2)
+	}
+	exp := chunkSize / 250
+	if exp < 1 {
+		exp = 1
+	}
+	return exp
 }
 
 var levelThresholds = calculateLevelTresholds()
