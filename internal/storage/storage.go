@@ -24,6 +24,8 @@ var (
 	bktProcessedFiles = []byte("processed_files")
 	bktDust           = []byte("dust")
 	bktHerb           = []byte("herb")
+	bktLevel          = []byte("level")
+	bktStat           = []byte("stat")
 )
 
 var (
@@ -454,6 +456,19 @@ func (s *Storage) UpdateDust(userID int64, updFunc func(*Dust)) (*Dust, error) {
 	return &dust, err
 }
 
+func (s *Storage) GetDustByUserID(userID int64) (dust Dust, err error) {
+	err = s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktDust)
+		if b == nil {
+			return nil
+		}
+		id := int64ToBytes(userID)
+		dust, err = s.getDust(b, id)
+		return err
+	})
+	return dust, err
+}
+
 func (s *Storage) UpdateHerb(userID int64, updFunc func(*Herb)) (*Herb, error) {
 	var herb Herb
 	err := s.db.Update(func(tx *bolt.Tx) error {
@@ -470,6 +485,81 @@ func (s *Storage) UpdateHerb(userID int64, updFunc func(*Herb)) (*Herb, error) {
 		return s.putHerb(b, id, herb)
 	})
 	return &herb, err
+}
+
+func (s *Storage) GetHerbByUserID(userID int64) (herb Herb, err error) {
+	err = s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktHerb)
+		if b == nil {
+			return nil
+		}
+		id := int64ToBytes(userID)
+		herb, err = s.getHerb(b, id)
+		return err
+	})
+	return herb, err
+}
+
+func (s *Storage) UpdateLevel(userID int64, updFunc func(*Level)) (*Level, error) {
+	var level Level
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktLevel)
+		if err != nil {
+			return err
+		}
+		id := int64ToBytes(userID)
+		level, err = s.getLevel(b, id)
+		if err != nil {
+			return err
+		}
+		updFunc(&level)
+		return s.putLevel(b, id, level)
+	})
+	return &level, err
+}
+
+func (s *Storage) GetLevelByUserID(userID int64) (level Level, err error) {
+	err = s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktLevel)
+		if b == nil {
+			return nil
+		}
+		id := int64ToBytes(userID)
+		level, err = s.getLevel(b, id)
+		return err
+	})
+	return level, err
+}
+
+func (s *Storage) UpdateStat(userID int64, updFunc func(*Stat)) (*Stat, error) {
+	var stat Stat
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktStat)
+		if err != nil {
+			return err
+		}
+		id := int64ToBytes(userID)
+		stat, err = s.getStat(b, id)
+		if err != nil {
+			return err
+		}
+		updFunc(&stat)
+		return s.putStat(b, id, stat)
+	})
+	return &stat, err
+}
+
+func (s *Storage) GetStatByUserID(userID int64) (stat Stat, err error) {
+	err = s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktStat)
+		if b == nil {
+			return nil
+		}
+		id := int64ToBytes(userID)
+		stat, err = s.getStat(b, id)
+		return err
+	})
+	return stat, err
 }
 
 // helper functions
@@ -616,19 +706,6 @@ func (s *Storage) getDust(b *bolt.Bucket, id []byte) (dust Dust, err error) {
 	return dust, nil
 }
 
-func (s *Storage) GetDustByUserID(userID int64) (dust Dust, err error) {
-	err = s.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(bktDust)
-		if b == nil {
-			return nil
-		}
-		id := int64ToBytes(userID)
-		dust, err = s.getDust(b, id)
-		return err
-	})
-	return dust, err
-}
-
 func (s *Storage) putDust(b *bolt.Bucket, id []byte, dust Dust) error {
 	encoded, err := json.Marshal(dust)
 	if err != nil {
@@ -649,21 +726,48 @@ func (s *Storage) getHerb(b *bolt.Bucket, id []byte) (herb Herb, err error) {
 	return herb, nil
 }
 
-func (s *Storage) GetHerbByUserID(userID int64) (herb Herb, err error) {
-	err = s.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(bktHerb)
-		if b == nil {
-			return nil
-		}
-		id := int64ToBytes(userID)
-		herb, err = s.getHerb(b, id)
-		return err
-	})
-	return herb, err
-}
-
 func (s *Storage) putHerb(b *bolt.Bucket, id []byte, herb Herb) error {
 	encoded, err := json.Marshal(herb)
+	if err != nil {
+		return err
+	}
+	return b.Put(id, encoded)
+}
+
+func (s *Storage) getLevel(b *bolt.Bucket, id []byte) (level Level, err error) {
+	v := b.Get(id)
+	if v == nil {
+		return level, nil
+	}
+	err = json.Unmarshal(v, &level)
+	if err != nil {
+		return level, errors.Wrap(err, "failed to unmarshal level")
+	}
+	return level, nil
+}
+
+func (s *Storage) putLevel(b *bolt.Bucket, id []byte, level Level) error {
+	encoded, err := json.Marshal(level)
+	if err != nil {
+		return err
+	}
+	return b.Put(id, encoded)
+}
+
+func (s *Storage) getStat(b *bolt.Bucket, id []byte) (stat Stat, err error) {
+	v := b.Get(id)
+	if v == nil {
+		return stat, nil
+	}
+	err = json.Unmarshal(v, &stat)
+	if err != nil {
+		return stat, errors.Wrap(err, "failed to unmarshal stat")
+	}
+	return stat, nil
+}
+
+func (s *Storage) putStat(b *bolt.Bucket, id []byte, stat Stat) error {
+	encoded, err := json.Marshal(stat)
 	if err != nil {
 		return err
 	}

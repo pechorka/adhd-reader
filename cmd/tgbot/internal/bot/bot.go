@@ -280,6 +280,14 @@ func (b *Bot) nextChunk(from *tgbotapi.User) {
 
 		}
 	}
+	lvl, _, levelUp, err := b.service.ExpOnNextChunk(from.ID)
+	// b.replyWithPlainText(from, "EXP:"+strconv.FormatInt(lvl.Experience, 10)+"LVL:"+strconv.FormatInt(lvl.Level, 10))
+	if err != nil {
+		b.replyErrorToUser(from, errorOnGettingLootMsgId, err)
+	}
+	if levelUp {
+		b.replyWithPlainText(from, "🎉 LEVEL UP!! Level "+strconv.FormatInt(lvl.Level, 10)) //TODO: i18n перевести
+	}
 
 	b.chunkReply(from, b.service.NextChunk)
 }

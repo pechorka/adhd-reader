@@ -83,3 +83,16 @@ type Herb struct {
 	LavandaCount int64
 	MelissaCount int64
 }
+
+type Stat struct {
+	Luck           int64
+	Accuracy       int64
+	Attention      int64
+	TimeManagement int64
+	Charizma       int64
+}
+
+type Level struct {
+	Experience int64
+	Level      int64
+}

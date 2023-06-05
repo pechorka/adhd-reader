@@ -413,6 +413,19 @@ type Herb struct {
 	MelissaCount int64
 }
 
+type Level struct {
+	Level      int64
+	Experience int64
+}
+type Stat struct {
+	Luck           int64
+	Accuracy       int64
+	Attention      int64
+	TimeManagement int64
+	Charizma       int64
+}
+
+// currentDust, currentHerb, deltaDust, deltaHerb, err
 func (s *Service) LootOnNextChunk(userID int64) (*Dust, *Herb, Dust, Herb, error) {
 	var deltaDust Dust
 	var deltaHerb Herb
@@ -514,10 +527,72 @@ func (s *Service) LootOnNextChunk(userID int64) (*Dust, *Herb, Dust, Herb, error
 	if err != nil {
 		return nil, nil, Dust{}, Herb{}, err
 	}
-	return mapDbDustToCurrentDust(dbDust), mapDbHerbToCurrentHerb(dbHerb), deltaDust, deltaHerb, nil
+	return mapDbDustToServiceDust(dbDust), mapDbHerbToServiceHerb(dbHerb), deltaDust, deltaHerb, nil
 }
 
-func mapDbDustToCurrentDust(dbDust *storage.Dust) *Dust {
+// currentLevel, deltaExp,levelUp?, err
+func (s *Service) ExpOnNextChunk(userID int64) (*Level, int64, bool, error) {
+	deltaExp := int64(2) //TODO determine by chunk size
+	levelUp := false
+	oldLevel, err := s.s.GetLevelByUserID(userID)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	dbLevel, err := s.s.UpdateLevel(userID, func(d *storage.Level) {
+		d.Experience += deltaExp
+	})
+	if err != nil {
+		return nil, 0, false, err
+	}
+	//TODO: refactor
+	//TODO: delete Level from DB and make "detect level by experience"
+	newLevelNumber := oldLevel.Level
+
+	if dbLevel.Experience >= 100 {
+		newLevelNumber = 1
+	}
+	if dbLevel.Experience >= 210 {
+		newLevelNumber = 2
+	}
+	if dbLevel.Experience >= 331 {
+		newLevelNumber = 3
+	}
+	if dbLevel.Experience >= 464 {
+		newLevelNumber = 4
+	}
+	if dbLevel.Experience >= 610 {
+		newLevelNumber = 5
+	}
+	if dbLevel.Experience >= 771 {
+		newLevelNumber = 6
+	}
+	if dbLevel.Experience >= 948 {
+		newLevelNumber = 7
+	}
+	if dbLevel.Experience >= 1143 {
+		newLevelNumber = 8
+	}
+	if dbLevel.Experience >= 1358 {
+		newLevelNumber = 9
+	}
+	if dbLevel.Experience >= 1595 {
+		newLevelNumber = 10
+	}
+
+	dbLevel, err = s.s.UpdateLevel(userID, func(d *storage.Level) { d.Level = newLevelNumber })
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	if dbLevel.Level > oldLevel.Level {
+		levelUp = true
+	}
+
+	return mapDbLevelToServiceLevel(dbLevel), deltaExp, levelUp, nil
+}
+
+func mapDbDustToServiceDust(dbDust *storage.Dust) *Dust {
 	return &Dust{
 		RedCount:    dbDust.RedCount,
 		OrangeCount: dbDust.OrangeCount,
@@ -530,12 +605,29 @@ func mapDbDustToCurrentDust(dbDust *storage.Dust) *Dust {
 		BlackCount:  dbDust.BlackCount,
 	}
 }
-func mapDbHerbToCurrentHerb(dbHerb *storage.Herb) *Herb {
+func mapDbHerbToServiceHerb(dbHerb *storage.Herb) *Herb {
 	return &Herb{
 		LavandaCount: dbHerb.LavandaCount,
 		MelissaCount: dbHerb.MelissaCount,
 	}
 }
+
+func mapDbLevelToServiceLevel(dbLevel *storage.Level) *Level {
+	return &Level{
+		Experience: dbLevel.Experience,
+		Level:      dbLevel.Level,
+	}
+}
+
+// func mapDbStatToServiceStat(dbStat *storage.Stat) *Stat {
+// 	return &Stat{
+// 		Luck:           dbStat.Luck,
+// 		Accuracy:       dbStat.Accuracy,
+// 		Attention:      dbStat.Attention,
+// 		TimeManagement: dbStat.TimeManagement,
+// 		Charizma:       dbStat.Charizma,
+// 	}
+// }
 
 func (dust Dust) TotalDust() int64 {
 	return dust.RedCount + dust.OrangeCount + dust.YellowCount + dust.GreenCount + dust.BlueCount + dust.IndigoCount + dust.PurpleCount + dust.WhiteCount + dust.BlackCount
@@ -554,5 +646,5 @@ func (s *Service) GetLoot(userID int64) (*Dust, *Herb, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return mapDbDustToCurrentDust(&dbDust), mapDbHerbToCurrentHerb(&dbHerb), nil
+	return mapDbDustToServiceDust(&dbDust), mapDbHerbToServiceHerb(&dbHerb), nil
 }
