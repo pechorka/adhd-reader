@@ -1,9 +1,9 @@
 package service
 
 import (
-	"github.com/pechorka/adhd-reader/internal/storage"
 	"testing"
 
+	"github.com/pechorka/adhd-reader/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,10 +31,44 @@ func Test_calculateCompletionPercent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := calculateCompletionPercent(
 				storage.TextWithChunkInfo{
-				TotalChunks:  tt.totalChunks,
-				CurrentChunk: tt.currentChunk,
-			})
+					TotalChunks:  tt.totalChunks,
+					CurrentChunk: tt.currentChunk,
+				})
 			require.Equal(t, tt.wantPercent, got)
+		})
+	}
+}
+
+func TestGetLevelByExperience(t *testing.T) {
+	type args struct {
+		experience int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want int64
+	}{
+		{name: "0", args: args{experience: 0}, want: 0},
+		{name: "1", args: args{experience: 1}, want: 0},
+		{name: "99", args: args{experience: 99}, want: 0},
+		{name: "100", args: args{experience: 100}, want: 1},
+		{name: "101", args: args{experience: 101}, want: 1},
+		{name: "210", args: args{experience: 210}, want: 2},
+		{name: "331", args: args{experience: 331}, want: 3},
+		{name: "464", args: args{experience: 464}, want: 4},
+		{name: "610", args: args{experience: 610}, want: 5},
+		{name: "770", args: args{experience: 770}, want: 6},
+		{name: "1000", args: args{experience: 1000}, want: 7},
+		{name: "1500", args: args{experience: 1500}, want: 9},
+		{name: "5629", args: args{experience: 5629}, want: 19},
+		{name: "5630", args: args{experience: 5630}, want: 20},
+		{name: "5631", args: args{experience: 5631}, want: 20},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := DetectLevelByExperience(tt.args.experience); got != tt.want {
+				t.Errorf("GetLevelByExperience() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

@@ -468,10 +468,11 @@ func (s *Service) LootOnNextChunk(userID int64) (*LootResult, error) {
 func (s *Service) ExpOnNextChunk(userID int64) (*Level, int64, bool, error) {
 	deltaExp := int64(2) //TODO determine by chunk size
 	levelUp := false
-	oldLevel, err := s.s.GetLevelByUserID(userID)
+	oldExperience, err := s.s.GetLevelByUserID(userID)
 	if err != nil {
 		return nil, 0, false, err
 	}
+	oldLevelNumber := DetectLevelByExperience(oldExperience.Experience)
 
 	dbLevel, err := s.s.UpdateLevel(userID, func(d *storage.Level) {
 		d.Experience += deltaExp
@@ -479,51 +480,41 @@ func (s *Service) ExpOnNextChunk(userID int64) (*Level, int64, bool, error) {
 	if err != nil {
 		return nil, 0, false, err
 	}
-	//TODO: refactor
-	//TODO: delete Level from DB and make "detect level by experience"
-	newLevelNumber := oldLevel.Level
 
-	if dbLevel.Experience >= 100 {
-		newLevelNumber = 1
-	}
-	if dbLevel.Experience >= 210 {
-		newLevelNumber = 2
-	}
-	if dbLevel.Experience >= 331 {
-		newLevelNumber = 3
-	}
-	if dbLevel.Experience >= 464 {
-		newLevelNumber = 4
-	}
-	if dbLevel.Experience >= 610 {
-		newLevelNumber = 5
-	}
-	if dbLevel.Experience >= 771 {
-		newLevelNumber = 6
-	}
-	if dbLevel.Experience >= 948 {
-		newLevelNumber = 7
-	}
-	if dbLevel.Experience >= 1143 {
-		newLevelNumber = 8
-	}
-	if dbLevel.Experience >= 1358 {
-		newLevelNumber = 9
-	}
-	if dbLevel.Experience >= 1595 {
-		newLevelNumber = 10
-	}
-
-	dbLevel, err = s.s.UpdateLevel(userID, func(d *storage.Level) { d.Level = newLevelNumber })
-	if err != nil {
-		return nil, 0, false, err
-	}
-
-	if dbLevel.Level > oldLevel.Level {
+	if DetectLevelByExperience(dbLevel.Experience) > oldLevelNumber {
 		levelUp = true
 	}
 
 	return mapDbLevelToServiceLevel(dbLevel), deltaExp, levelUp, nil
+}
+
+var levelThresholds = calculateLevelTresholds()
+
+func DetectLevelByExperience(experience int64) int64 {
+
+	newLevelNumber := int64(0)
+	for _, threshold := range levelThresholds {
+		if experience >= threshold {
+			newLevelNumber += 1
+		} else {
+			break
+		}
+	}
+	return newLevelNumber
+}
+
+// TODO: Подумать над thresholds после 20 уровня. Они уже там не оч адекватно большие
+func calculateLevelTresholds() []int64 {
+	var levelThresholds = []int64{100}
+	var levelRequirements = []int64{100}
+	//filling levelRequirements with values. Each next level requires 1.1 times more than previous. Starting from 100 for Level 1
+	for i := 1; i < 100; i++ {
+		levelRequirements = append(levelRequirements, int64(float64(levelRequirements[i-1])*1.1))
+	}
+	for i := 1; i < len(levelRequirements); i++ {
+		levelThresholds = append(levelThresholds, levelThresholds[i-1]+levelRequirements[i])
+	}
+	return levelThresholds
 }
 
 func (s *Service) findHerb() Herb {
@@ -637,7 +628,7 @@ func mapDbHerbToHerb(dbHerb *storage.Herb) *Herb {
 func mapDbLevelToServiceLevel(dbLevel *storage.Level) *Level {
 	return &Level{
 		Experience: dbLevel.Experience,
-		Level:      dbLevel.Level,
+		Level:      DetectLevelByExperience(dbLevel.Experience),
 	}
 }
 

@@ -94,5 +94,4 @@ type Stat struct {
 
 type Level struct {
 	Experience int64
-	Level      int64
 }

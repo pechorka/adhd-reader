@@ -287,6 +287,10 @@ func (b *Bot) nextChunk(from *tgbotapi.User) {
 	}
 	if levelUp {
 		b.replyWithPlainText(from, "🎉 LEVEL UP!! Level "+strconv.FormatInt(lvl.Level, 10)) //TODO: i18n перевести
+		//alert me if someone reached level 10+ so that i can refactor leveling system
+		if lvl.Level > 10 {
+			b.reportError("user " + strconv.FormatInt(from.ID, 10) + " reached level " + strconv.FormatInt(lvl.Level, 10) + "!")
+		}
 	}
 
 	b.chunkReply(from, b.service.NextChunk)
