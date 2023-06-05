@@ -240,14 +240,16 @@ func TestDustOnNextChunk(t *testing.T) {
 		store := testStorage(t)
 		srv := NewService(store, 5)
 		srv.chancer = &mockChancer{
-			winResult: true,
+			winResult:          true,
+			pickWinResultIndex: 0, // index of red dust
 		}
 
 		userID := rand.Int63()
 
-		dust, _, _, _, err := srv.LootOnNextChunk(userID)
+		loot, err := srv.LootOnNextChunk(userID)
 		require.NoError(t, err)
-		require.EqualValues(t, 1, dust.RedCount)
+		require.EqualValues(t, 1, loot.TotalDust.RedCount)
+		require.EqualValues(t, 1, loot.DeltaDust.RedCount)
 	})
 
 	t.Run("dust is not added", func(t *testing.T) {
@@ -259,9 +261,9 @@ func TestDustOnNextChunk(t *testing.T) {
 
 		userID := rand.Int63()
 
-		dust, _, _, _, err := srv.LootOnNextChunk(userID)
+		loot, err := srv.LootOnNextChunk(userID)
 		require.NoError(t, err)
-		require.EqualValues(t, 0, dust.RedCount)
+		require.EqualValues(t, 0, loot.TotalDust.RedCount)
 	})
 }
 
@@ -281,8 +283,8 @@ func testStorage(t *testing.T) *storage.Storage {
 }
 
 type mockChancer struct {
-	winResult     bool
-	pickWinResult float64
+	winResult          bool
+	pickWinResultIndex int
 }
 
 func (m *mockChancer) Win(percent float64) bool {
@@ -290,10 +292,5 @@ func (m *mockChancer) Win(percent float64) bool {
 }
 
 func (m *mockChancer) PickWin(inputs ...chance.WinInput) {
-	for _, input := range inputs {
-		if input.Percent == m.pickWinResult {
-			input.Action()
-			return
-		}
-	}
+	inputs[m.pickWinResultIndex].Action()
 }
