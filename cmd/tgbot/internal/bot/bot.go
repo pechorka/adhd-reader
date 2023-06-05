@@ -269,12 +269,12 @@ func (b *Bot) nextChunk(from *tgbotapi.User) {
 	} else {
 		if deltaDust.TotalDust() > 0 || deltaHerb.TotalHerb() > 0 {
 			if deltaDust.TotalDust() > 0 && deltaHerb.TotalHerb() > 0 {
-				b.replyWithPlainText(from, "🎉 "+DustToString(&deltaDust, " ")+" 🎊 "+HerbToString(&deltaHerb, " "))
+				b.replyWithPlainText(from, DustToString(&deltaDust, " ")+"  "+HerbToString(&deltaHerb, " "))
 			} else {
 				if deltaDust.TotalDust() > 0 {
-					b.replyWithPlainText(from, "🎉 "+DustToString(&deltaDust, " "))
+					b.replyWithPlainText(from, DustToString(&deltaDust, " "))
 				} else {
-					b.replyWithPlainText(from, "🎊 "+HerbToString(&deltaHerb, " "))
+					b.replyWithPlainText(from, HerbToString(&deltaHerb, " "))
 				}
 			}
 
@@ -559,7 +559,7 @@ func (b *Bot) loot(msg *tgbotapi.Message) {
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnGettingLootMsgId, err)
 	}
-	b.replyWithPlainText(msg.From, DustToString(dust, "\n")+"\n"+HerbToString(herb, "\n")+"\n ✨✨✨ "+strconv.FormatInt(dust.TotalDust(), 10)+"\n 🍄🍄🍄 "+strconv.FormatInt(herb.TotalHerb(), 10))
+	b.replyWithPlainText(msg.From, DustToString(dust, "\n")+"\n"+HerbToString(herb, "\n")+"\n ✨✨✨ "+strconv.FormatInt(dust.TotalDust(), 10)+"\n 🪴🪴🪴 "+strconv.FormatInt(herb.TotalHerb(), 10))
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
