@@ -786,3 +786,15 @@ func (s *Service) GetLoot(userID int64) (*Dust, *Herb, error) {
 	}
 	return mapDbDustToDust(&dbDust), mapDbHerbToHerb(&dbHerb), nil
 }
+
+func (s *Service) GetStatsAndLevel(userID int64) (*Stat, *Level, error) {
+	dbStat, err := s.s.GetStatByUserID(userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	dbLevel, err := s.s.GetLevelByUserID(userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return mapDbStatToServiceStat(&dbStat), mapDbLevelToServiceLevel(&dbLevel), nil
+}

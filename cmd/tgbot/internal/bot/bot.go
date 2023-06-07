@@ -171,6 +171,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.random(msg, 50)
 	case "loot":
 		b.loot(msg)
+	case "stats":
+		b.stats(msg)
 	default:
 		if cmd != "" {
 			if b.handleAdminMsg(msg) {
@@ -564,6 +566,23 @@ func (b *Bot) loot(msg *tgbotapi.Message) {
 		b.replyErrorWithI18n(msg, errorOnGettingLootMsgId, err)
 	}
 	b.replyWithPlainText(msg.From, DustToString(dust, "\n")+"\n"+HerbToString(herb, "\n")+"\n ✨✨✨ "+strconv.FormatInt(dust.TotalDust(), 10)+"\n 🪴🪴🪴 "+strconv.FormatInt(herb.TotalHerb(), 10))
+}
+
+func (b *Bot) stats(msg *tgbotapi.Message) {
+
+	stats, level, err := b.service.GetStatsAndLevel(msg.From.ID)
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnGettingLootMsgId, err)
+	}
+	b.replyWithPlainText(msg.From, "LEVEL "+strconv.FormatInt(level.Level, 10)+"\n"+
+		"EXP: "+strconv.FormatInt(level.Experience, 10)+"\n"+"✨✨"+"\n"+
+		"AC: "+strconv.FormatInt(stats.Accuracy, 10)+"\n"+
+		"AT: "+strconv.FormatInt(stats.Attention, 10)+"\n"+
+		"TM: "+strconv.FormatInt(stats.TimeManagement, 10)+"\n"+
+		"CR: "+strconv.FormatInt(stats.Charizma, 10)+"\n"+
+		"LK: "+strconv.FormatInt(stats.Luck, 10)+"\n"+
+		"✨Free: "+strconv.FormatInt(stats.Free, 10))
+
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
