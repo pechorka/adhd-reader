@@ -575,13 +575,13 @@ func (b *Bot) stats(msg *tgbotapi.Message) {
 		b.replyErrorWithI18n(msg, errorOnGettingLootMsgId, err)
 	}
 	b.replyWithPlainText(msg.From, "LEVEL "+strconv.FormatInt(level.Level, 10)+"\n"+
-		"EXP: "+strconv.FormatInt(level.Experience, 10)+"\n"+"✨✨"+"\n"+
+		"EXP: "+strconv.FormatInt(level.Experience, 10)+"\n"+"✨✨✨✨✨"+"\n"+
 		"AC: "+strconv.FormatInt(stats.Accuracy, 10)+"\n"+
 		"AT: "+strconv.FormatInt(stats.Attention, 10)+"\n"+
 		"TM: "+strconv.FormatInt(stats.TimeManagement, 10)+"\n"+
 		"CR: "+strconv.FormatInt(stats.Charizma, 10)+"\n"+
 		"LK: "+strconv.FormatInt(stats.Luck, 10)+"\n"+
-		"✨Free: "+strconv.FormatInt(stats.Free, 10))
+		"Free: "+strconv.FormatInt(stats.Free, 10))
 
 }
 
