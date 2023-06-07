@@ -85,6 +85,7 @@ type Herb struct {
 }
 
 type Stat struct {
+	Free           int64
 	Luck           int64
 	Accuracy       int64
 	Attention      int64

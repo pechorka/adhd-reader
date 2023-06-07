@@ -418,6 +418,7 @@ type Level struct {
 	Experience int64
 }
 type Stat struct {
+	Free           int64
 	Luck           int64
 	Accuracy       int64
 	Attention      int64
@@ -433,7 +434,28 @@ type LootResult struct {
 }
 
 func (s *Service) LootOnNextChunk(userID int64) (*LootResult, error) {
-	deltaDust := s.findDust()
+	dbPlayerStats, err := s.s.GetStatByUserID(userID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get stats by user id")
+	}
+	var pointerdbPlayerStats *storage.Stat = &dbPlayerStats
+
+	//@pechor, Это я побеждала указатели. Не удаляй пока, пожалуйста
+
+	// var creature string = "shark"
+	// var pointer *string = &creature
+
+	// fmt.Println("creature =", creature)
+	// fmt.Println("pointer =", pointer)
+	// fmt.Println("*pointer =", pointer)
+
+	// Output
+	// creature = shark
+	// pointer = 0xc000010200
+	// *pointer = shark
+
+	playerStats := mapDbStatToServiceStat(pointerdbPlayerStats)
+	deltaDust := s.findDustAtomicAction(playerStats.Attention, playerStats.Accuracy)
 	dbDust, err := s.s.UpdateDust(userID, func(d *storage.Dust) {
 		d.RedCount += deltaDust.RedCount
 		d.OrangeCount += deltaDust.OrangeCount
@@ -448,7 +470,7 @@ func (s *Service) LootOnNextChunk(userID int64) (*LootResult, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to update dust")
 	}
-	deltaHerb := s.findHerb()
+	deltaHerb := s.findHerbAtomicAction(playerStats.Attention, playerStats.Accuracy)
 	dbHerb, err := s.s.UpdateHerb(userID, func(d *storage.Herb) {
 		d.MelissaCount += deltaHerb.MelissaCount
 		d.LavandaCount += deltaHerb.LavandaCount
@@ -534,92 +556,109 @@ func calculateLevelTresholds() []int64 {
 	return levelThresholds
 }
 
-func (s *Service) findHerb() Herb {
+func (s *Service) findHerbAtomicAction(attention int64, accuracy int64) Herb {
 	var deltaHerb Herb
-	// 1.9% chance to get Herb
-	if !s.chancer.Win(0.019) {
+	// BASE 1.9% chance to get Herb
+	// 0.1% for each point in Attention
+	var chanceToGetHerb float64 = 0.019 + 0.001*float64(attention)
+	if !s.chancer.Win(chanceToGetHerb) {
 		return deltaHerb
 	}
+	//Amount of herb depends on Accuracy. Each point of accuracy adds 33% chance to get one more herb
 	s.chancer.PickWin(
 		chance.WinInput{
 			Percent: 0.7,
 			Action: func() {
-				deltaHerb.MelissaCount++
+				deltaHerb.MelissaCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.33)
 			},
 		},
 		chance.WinInput{
 			Percent: 0.3,
 			Action: func() {
-				deltaHerb.LavandaCount++
+				deltaHerb.LavandaCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.33)
 			},
 		},
 	)
 	return deltaHerb
 }
 
-func (s *Service) findDust() Dust {
+func (s *Service) findDustAtomicAction(attention int64, accuracy int64) Dust {
+
 	var deltaDust Dust
-	// 33% chance to get Dust
-	if !s.chancer.Win(0.33) {
+	// BASE 33% chance to get Dust
+	// 0.1% for each point in Attention
+	var chanceToGetDust float64 = 0.33 + 0.001*float64(attention)
+	if !s.chancer.Win(chanceToGetDust) {
 		return deltaDust
 	}
+	//Amount of dust depends on Accuracy. Each point of accuracy adds 50% chance to get one more dust
 	s.chancer.PickWin(
 		chance.WinInput{
 			Percent: 0.25,
 			Action: func() {
-				deltaDust.RedCount++
+				deltaDust.RedCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.5)
 			},
 		},
 		chance.WinInput{
 			Percent: 0.03,
 			Action: func() {
-				deltaDust.OrangeCount++
+				deltaDust.OrangeCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.5)
 			},
 		},
 		chance.WinInput{
 			Percent: 0.25,
 			Action: func() {
-				deltaDust.YellowCount++
+				deltaDust.YellowCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.5)
 			},
 		},
 		chance.WinInput{
 			Percent: 0.142,
 			Action: func() {
-				deltaDust.GreenCount++
+				deltaDust.GreenCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.5)
 			},
 		},
 		chance.WinInput{
 			Percent: 0.13,
 			Action: func() {
-				deltaDust.BlueCount++
+				deltaDust.BlueCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.5)
 			},
 		},
 		chance.WinInput{
 			Percent: 0.13,
 			Action: func() {
-				deltaDust.IndigoCount++
+				deltaDust.IndigoCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.5)
 			},
 		},
 		chance.WinInput{
 			Percent: 0.03,
 			Action: func() {
-				deltaDust.PurpleCount++
+				deltaDust.PurpleCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.5)
 			},
 		},
 		chance.WinInput{
 			Percent: 0.019,
 			Action: func() {
-				deltaDust.WhiteCount++
+				deltaDust.WhiteCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.5)
 			},
 		},
 		chance.WinInput{
 			Percent: 0.019,
 			Action: func() {
-				deltaDust.BlackCount++
+				deltaDust.BlackCount += 1 + s.getLootAmountByAccuracyAndIncreaseRate(accuracy, 0.5)
 			},
 		},
 	)
 	return deltaDust
+}
+
+func (s *Service) getLootAmountByAccuracyAndIncreaseRate(accuracy int64, increaseRate float64) int64 {
+	count := int64(0)
+	for i := 0; i < int(accuracy); i++ {
+		if s.chancer.Win(increaseRate) {
+			count++
+		}
+	}
+	return count
 }
 
 func mapDbDustToDust(dbDust *storage.Dust) *Dust {
@@ -649,15 +688,16 @@ func mapDbLevelToServiceLevel(dbLevel *storage.Level) *Level {
 	}
 }
 
-// func mapDbStatToServiceStat(dbStat *storage.Stat) *Stat {
-// 	return &Stat{
-// 		Luck:           dbStat.Luck,
-// 		Accuracy:       dbStat.Accuracy,
-// 		Attention:      dbStat.Attention,
-// 		TimeManagement: dbStat.TimeManagement,
-// 		Charizma:       dbStat.Charizma,
-// 	}
-// }
+func mapDbStatToServiceStat(dbStat *storage.Stat) *Stat {
+	return &Stat{
+		Free:           dbStat.Free,
+		Luck:           dbStat.Luck,
+		Accuracy:       dbStat.Accuracy,
+		Attention:      dbStat.Attention,
+		TimeManagement: dbStat.TimeManagement,
+		Charizma:       dbStat.Charizma,
+	}
+}
 
 func (dust Dust) TotalDust() int64 {
 	return dust.RedCount + dust.OrangeCount + dust.YellowCount + dust.GreenCount + dust.BlueCount + dust.IndigoCount + dust.PurpleCount + dust.WhiteCount + dust.BlackCount
