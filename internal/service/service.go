@@ -509,11 +509,35 @@ func (s *Service) ExpOnNextChunk(userID int64) (*Level, int64, bool, error) {
 		return nil, 0, false, err
 	}
 
-	if DetectLevelByExperience(dbLevel.Experience) > oldLevelNumber {
+	newLevel := mapDbLevelToServiceLevel(dbLevel)
+	if newLevel.Level > oldLevelNumber {
 		levelUp = true
+		if newLevel.Level >= 21 {
+			_, err = s.s.UpdateStat(userID, func(d *storage.Stat) {
+				d.Free++
+			})
+			if err != nil {
+				return nil, 0, false, err
+			}
+		}
 	}
 
-	return mapDbLevelToServiceLevel(dbLevel), deltaExp, levelUp, nil
+	if newLevel.Level < 21 {
+		currentStats := LevelUpStatDistribution(newLevel.Level)
+		_, err = s.s.UpdateStat(userID, func(d *storage.Stat) {
+			d.Accuracy = currentStats.Accuracy
+			d.Attention = currentStats.Attention
+			d.TimeManagement = currentStats.TimeManagement
+			d.Charizma = currentStats.Charizma
+			d.Luck = currentStats.Luck
+		})
+		if err != nil {
+			return nil, 0, false, err
+		}
+	}
+	//TODO: Display stats increase on level up
+
+	return newLevel, deltaExp, levelUp, nil
 }
 
 func calculateExperienceGainByChunkSize(chunkSize int64) int64 {
@@ -540,6 +564,50 @@ func DetectLevelByExperience(experience int64) int64 {
 		}
 	}
 	return newLevelNumber
+}
+
+func LevelUpStatDistribution(level int64) Stat {
+
+	var accuracyByLevelIncrease = []int64{
+		//01, 2, 3, 4, 5, 6, 7, 8, 9
+		0, 1, 0, 1, 0, 1, 0, 1, 0, 0, //0-9
+		0, 0, 0, 0, 0, 1, 0, 0, 0, 0, //10-19
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //20-29
+	var attentionByLevelIncrease = []int64{
+		0, 0, 1, 0, 1, 0, 1, 0, 0, 0, //0-9
+		0, 1, 0, 0, 0, 0, 0, 0, 1, 0, //10-19
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //20-29
+	var timeManagementByLevelIncrease = []int64{
+		0, 0, 0, 0, 0, 0, 0, 0, 1, 0, //0-9
+		1, 0, 0, 1, 0, 0, 1, 0, 0, 1, //10-19
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //20-29
+	var charizmaByLevelIncrease = []int64{
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //0-9
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //10-19
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //20-29
+	var luckByLevelIncrease = []int64{
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 1, //0-9
+		0, 0, 1, 0, 1, 0, 0, 1, 0, 0, //10-19
+		1, 0, 0, 0, 0, 0, 0, 0, 0, 0} //20-29
+
+	var statsIncrease = [][]int64{
+		accuracyByLevelIncrease,
+		attentionByLevelIncrease,
+		timeManagementByLevelIncrease,
+		charizmaByLevelIncrease,
+		luckByLevelIncrease,
+	}
+	var stats = Stat{}
+
+	for i := 0; i < int(level)+1; i++ {
+		stats.Accuracy += statsIncrease[0][i]
+		stats.Attention += statsIncrease[1][i]
+		stats.TimeManagement += statsIncrease[2][i]
+		stats.Charizma += statsIncrease[3][i]
+		stats.Luck += statsIncrease[4][i]
+	}
+
+	return stats
 }
 
 // TODO: Подумать над thresholds после 20 уровня. Они уже там не оч адекватно большие
