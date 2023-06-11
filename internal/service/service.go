@@ -447,7 +447,7 @@ func (s *Service) LootOnNextChunk(userID int64) (*LootResult, error) {
 
 	// fmt.Println("creature =", creature)
 	// fmt.Println("pointer =", pointer)
-	// fmt.Println("*pointer =", pointer)
+	// fmt.Println("*pointer =", *pointer)
 
 	// Output
 	// creature = shark
