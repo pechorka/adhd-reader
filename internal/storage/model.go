@@ -96,3 +96,18 @@ type Stat struct {
 type Level struct {
 	Experience int64
 }
+
+type Recipe struct {
+	Name          string
+	RecipeDustMin Dust
+	RecipeDustMax Dust
+	RecipeHerbMin Herb
+	RecipeHerbMax Herb
+}
+
+type UserRecipe struct {
+	UserID     int64
+	RecipeName string
+	IdealDusts Dust
+	IdealHerbs Herb
+}

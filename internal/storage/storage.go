@@ -26,6 +26,8 @@ var (
 	bktHerb           = []byte("herb")
 	bktLevel          = []byte("level")
 	bktStat           = []byte("stat")
+	bktRecipe         = []byte("recipe")
+	bktUserRecipe     = []byte("user_recipe")
 )
 
 var (
@@ -562,6 +564,47 @@ func (s *Storage) GetStatByUserID(userID int64) (stat Stat, err error) {
 	return stat, err
 }
 
+func (s *Storage) GetRecipeByName(name string) (recipe Recipe, err error) {
+	err = s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktRecipe)
+		if b == nil {
+			return nil
+		}
+		recipe, err = s.getRecipe(b, []byte(name))
+		return err
+	})
+	return recipe, err
+}
+
+func (s *Storage) GetUserRecipeByUserIDandRecipeName(userID int64, recipeName string) (recipe UserRecipe, err error) {
+	err = s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktUserRecipe)
+		if b == nil {
+			return nil
+		}
+		recipe, err = s.getUserRecipe(b, userID, recipeName)
+		return err
+	})
+	return recipe, err
+}
+
+func (s *Storage) UpdateUserRecipe(userID int64, recipeName string, updFunc func(*UserRecipe)) (*UserRecipe, error) {
+	var userRecipe UserRecipe
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktUserRecipe)
+		if err != nil {
+			return err
+		}
+		userRecipe, err = s.getUserRecipe(b, userID, recipeName)
+		if err != nil {
+			return err
+		}
+		updFunc(&userRecipe)
+		return s.putUserRecipe(b, int64ToBytes(userID), userRecipe)
+	})
+	return &userRecipe, err
+}
+
 // helper functions
 
 var textsPrefix = []byte("texts-")
@@ -768,6 +811,52 @@ func (s *Storage) getStat(b *bolt.Bucket, id []byte) (stat Stat, err error) {
 
 func (s *Storage) putStat(b *bolt.Bucket, id []byte, stat Stat) error {
 	encoded, err := json.Marshal(stat)
+	if err != nil {
+		return err
+	}
+	return b.Put(id, encoded)
+}
+
+func (s *Storage) getRecipe(b *bolt.Bucket, id []byte) (recipe Recipe, err error) {
+	v := b.Get(id)
+	if v == nil {
+		return recipe, nil
+	}
+	err = json.Unmarshal(v, &recipe)
+	if err != nil {
+		return recipe, errors.Wrap(err, "failed to unmarshal stat")
+	}
+	return recipe, nil
+}
+
+func (s *Storage) getUserRecipe(b *bolt.Bucket, userID int64, recipeName string) (userRecipe UserRecipe, err error) {
+	// Create the key by concatenating userID and recipeName
+	key := fmt.Sprintf("%s|%s", strconv.FormatInt(userID, 10), recipeName)
+
+	err = s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("MyBucket"))
+		v := b.Get([]byte(key))
+
+		if v == nil {
+			return errors.New("No value found for this key")
+		}
+
+		err := json.Unmarshal(v, &userRecipe)
+		if err != nil {
+			return errors.Wrap(err, "failed to unmarshal user recipe")
+		}
+		return nil
+	})
+
+	if err != nil {
+		return UserRecipe{}, errors.Wrap(err, "Failed to get user recipe: %v")
+	}
+
+	return userRecipe, nil
+}
+
+func (s *Storage) putUserRecipe(b *bolt.Bucket, id []byte, recipe UserRecipe) error {
+	encoded, err := json.Marshal(recipe)
 	if err != nil {
 		return err
 	}
