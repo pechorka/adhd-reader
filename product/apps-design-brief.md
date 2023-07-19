@@ -1,3 +1,9 @@
+TODO
+Убедиться, что все части брифа-примера у меня есть
+![image](https://github.com/pechorka/adhd-reader/assets/10058916/b9c911ac-e13d-47d4-a8c1-7145b05dc80e)
+
+
+
 ## Project Overview: 
 *Describe your project in general terms. Provide a brief about your company, your goals, and what you expect from the mobile application.*
 
@@ -29,7 +35,7 @@
 *Clearly state what you want to achieve with the mobile application. This could include increasing brand awareness, improving customer engagement, or generating revenue.*
 
 Целью мобильных приложений является предоставление супер-классной читалки для пользователей.
-Удобство и accessability - наши друзья. 
+Удобство и accessibility - наши друзья. 
 Например, чтобы можно было читать одной рукой, переворачиваясь с бока на бок.
 Или быстро увеличить\уменьшить шрифт, потому что разная степень усталости (в т.ч. глаз). 
 Короче, сделать читалку не для того, чтобы было (как у litres), а чтобы было настолько идеально, насколько возможно: 
@@ -47,6 +53,19 @@
 Шрифты потенциально надо разрешить пользователям самим настраивать, но для интерфейса, наверное, надо выбрать какой-то. Мне нравятся "кругленькие" шрифты типа montseratt без засечек. Сейчас вот я пишу эти строки "программистским" JetBrains Mono, и он хорош :) Ну в общем, оставляю тебе на выбор, что будет хорошо читаться.
 Настроение бренда вообще уютное-безопасное, примерно как у ботика-заботика  https://t.me/projectgratefulbot
 
+### Color schemes
+Одна из цветовыхх схем должна быть в цветах единорога
+![image](https://github.com/pechorka/adhd-reader/assets/10058916/c9005ccb-2c86-4a99-bacd-a64d45cb9208)
+![image](https://github.com/pechorka/adhd-reader/assets/10058916/419b3913-b7ad-4914-854f-05915ede86cb)
+![image](https://github.com/pechorka/adhd-reader/assets/10058916/bba00e62-f7a4-4d0a-a47a-3b83cc5dbcef)
+![image](https://github.com/pechorka/adhd-reader/assets/10058916/8b56f654-fea0-43a9-8867-3c6b76b0bb51)
+![image](https://github.com/pechorka/adhd-reader/assets/10058916/89fca41a-ec86-4622-98d6-253f91fad099)
+
+## Visual references
+*Можешь еще рефы поискать не по теме, а визуальные, или для каких то решений которые нам бы подошли или просто нравятся. Короче все что клевое на твой вкус и достойно быть у нас в том или ином виде*
+TODO
+
+
 ## Functionality Requirements: 
 *Related to design*
 
@@ -54,6 +73,10 @@
 Чтоб кнопки управления были очень доступно расположены: поворот экрана, яркость, цветовая схема, размер шрифта. Но при этом ничто не отвлекало от чтения. Вот такая вот история :) Удачи. :D (хз, может они будут подползать за край экрана и быть блеклёлыми?)
 
 Полосу прогресса классно сделать будет, но незаметную, просто 2 пикселя в высоту, чтобы надо было прикладывать усилия, чтобы узнать прогресс. 
+
+### User Journey
+*Еще можешь описать свое видение пути пользователя. От открытия приложения, по шагам до его закрытия (то есть выполнения цели). Тип того в виде рассказа. Потом разложить можно*
+TODO
 
 ## Platform: 
 *Specify whether the application should be designed for iOS, Android, or both.*
