@@ -346,6 +346,9 @@ func (s *Storage) deleteTextBy(userID int64, predicate func(Text) bool) error {
 				if texts.Current == i {
 					texts.Current = NotSelected
 				}
+				if texts.Current > i {
+					texts.Current--
+				}
 				found = true
 				break
 			}

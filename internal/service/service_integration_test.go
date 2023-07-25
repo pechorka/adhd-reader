@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pechorka/adhd-reader/internal/storage"
 	"github.com/pechorka/adhd-reader/pkg/chance"
@@ -233,6 +234,39 @@ func TestService_SetChunkSize(t *testing.T) {
 
 	err = srv.SetChunkSize(userID, 5)
 	require.NoError(t, err)
+}
+
+func TestService_SyncTexts(t *testing.T) {
+	srv := NewService(testStorage(t), 100, nil)
+	userID := rand.Int63()
+
+	text1ID, err := srv.AddText(userID, "text1Name", "text1")
+	require.NoError(t, err)
+	text2ID, err := srv.AddText(userID, "text2Name", "text2")
+	require.NoError(t, err)
+	text3ID, err := srv.AddText(userID, "text3Name", "text3")
+	require.NoError(t, err)
+
+	now := time.Now()
+	syncTexts := []SyncText{
+		// date on server is newer, so mobile should be updated
+		{TextUUID: text1ID, ModifiedAt: now.AddDate(0, 0, -1), CurrentChunk: 10},
+		// date on server is older, so server should be updated
+		{TextUUID: text2ID, ModifiedAt: now.AddDate(0, 0, 1), CurrentChunk: 20},
+		// text is deleted on mobile
+		{TextUUID: text3ID, Deleted: true},
+	}
+
+	syncOnMobile, err := srv.SyncTexts(userID, syncTexts)
+	require.NoError(t, err)
+	require.Len(t, syncOnMobile, 1)
+	require.Equal(t, text1ID, syncOnMobile[0].TextUUID)
+	require.EqualValues(t, storage.NotSelected, syncOnMobile[0].CurrentChunk)
+
+	texts, more, err := srv.ListTexts(userID, 1, 50)
+	require.NoError(t, err)
+	require.False(t, more)
+	require.Len(t, texts, 2)
 }
 
 func TestDustOnNextChunk(t *testing.T) {

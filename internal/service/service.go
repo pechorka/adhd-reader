@@ -250,7 +250,6 @@ func (s *Service) SelectText(userID int64, textUUID string) (storage.Text, error
 		for i, t := range texts.Texts {
 			if t.UUID == textUUID {
 				texts.Current = i
-				texts.Texts[i].ModifiedAt = time.Now()
 				text = t
 				return nil
 			}
@@ -280,6 +279,51 @@ func (s *Service) RenameText(userID int64, newName string) (string, error) {
 		return nil
 	})
 	return oldName, err
+}
+
+type SyncText struct {
+	TextUUID     string
+	CurrentChunk int64
+	ModifiedAt   time.Time
+	Deleted      bool
+}
+
+func (s *Service) SyncTexts(userID int64, texts []SyncText) ([]SyncText, error) {
+	syncTextMap := make(map[string]SyncText, len(texts))
+	for _, t := range texts {
+		if t.Deleted {
+			err := s.s.DeleteTextByUUID(userID, t.TextUUID)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+		syncTextMap[t.TextUUID] = t
+	}
+	var result []SyncText
+	err := s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
+		for i := range texts.Texts {
+			t := texts.Texts[i]
+			syncText, ok := syncTextMap[t.UUID]
+			if !ok {
+				continue
+			}
+			if syncText.ModifiedAt.After(t.ModifiedAt) {
+				t.CurrentChunk = syncText.CurrentChunk
+				t.ModifiedAt = syncText.ModifiedAt
+				texts.Texts[i] = t
+				continue
+			}
+			// text on server is newer
+			result = append(result, SyncText{
+				TextUUID:     t.UUID,
+				CurrentChunk: t.CurrentChunk,
+				ModifiedAt:   t.ModifiedAt,
+			})
+		}
+		return nil
+	})
+	return result, err
 }
 
 func (s *Service) SetPage(userID, page int64) error {
