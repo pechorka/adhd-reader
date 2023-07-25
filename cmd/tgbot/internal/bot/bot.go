@@ -508,7 +508,7 @@ func (b *Bot) rename(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) download(msg *tgbotapi.Message) {
-	texts, err := b.service.FullTexts(msg.From.ID)
+	texts, err := b.service.FullTexts(msg.From.ID, nil)
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnListMsgId, err)
 		return

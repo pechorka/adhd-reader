@@ -208,7 +208,7 @@ func (s *Storage) GetTexts(id int64) ([]TextWithChunkInfo, error) {
 	return result, err
 }
 
-func (s *Storage) GetFullTexts(id int64) ([]FullText, error) {
+func (s *Storage) GetFullTexts(id int64, after *time.Time) ([]FullText, error) {
 	var result []FullText
 	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bktUserInfo)
@@ -219,6 +219,11 @@ func (s *Storage) GetFullTexts(id int64) ([]FullText, error) {
 		texts, err := getTexts(b, textsId(id))
 		if err != nil {
 			return err
+		}
+		if after != nil {
+			texts.Texts = filterTexts(texts.Texts, func(text Text) bool {
+				return text.CreatedAt.After(*after)
+			})
 		}
 		result, err = fullTexts(tx, texts)
 		return err
@@ -708,6 +713,16 @@ func getTexts(b *bolt.Bucket, id []byte) (texts UserTexts, err error) {
 		return defaultUserTexts(), nil
 	}
 	return unmarshalTexts(v)
+}
+
+func filterTexts(texts []Text, predicate func(Text) bool) []Text {
+	result := make([]Text, 0, len(texts))
+	for _, text := range texts {
+		if predicate(text) {
+			result = append(result, text)
+		}
+	}
+	return result
 }
 
 func unmarshalTexts(v []byte) (texts UserTexts, err error) {
