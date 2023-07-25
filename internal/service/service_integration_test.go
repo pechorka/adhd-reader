@@ -246,6 +246,7 @@ func TestService_SyncTexts(t *testing.T) {
 	require.NoError(t, err)
 	text3ID, err := srv.AddText(userID, "text3Name", "text3")
 	require.NoError(t, err)
+	nonExistentTextID := "nonexistent"
 
 	now := time.Now()
 	syncTexts := []SyncText{
@@ -255,13 +256,17 @@ func TestService_SyncTexts(t *testing.T) {
 		{TextUUID: text2ID, ModifiedAt: now.AddDate(0, 0, 1), CurrentChunk: 20},
 		// text is deleted on mobile
 		{TextUUID: text3ID, Deleted: true},
+		// text is deleted on server
+		{TextUUID: nonExistentTextID, ModifiedAt: now.AddDate(0, 0, -1), CurrentChunk: 10},
 	}
 
 	syncOnMobile, err := srv.SyncTexts(userID, syncTexts)
 	require.NoError(t, err)
-	require.Len(t, syncOnMobile, 1)
+	require.Len(t, syncOnMobile, 2)
 	require.Equal(t, text1ID, syncOnMobile[0].TextUUID)
 	require.EqualValues(t, storage.NotSelected, syncOnMobile[0].CurrentChunk)
+	require.Equal(t, nonExistentTextID, syncOnMobile[1].TextUUID)
+	require.True(t, syncOnMobile[1].Deleted)
 
 	texts, more, err := srv.ListTexts(userID, 1, 50)
 	require.NoError(t, err)

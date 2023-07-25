@@ -206,8 +206,8 @@ func paginateTexts(texts []storage.TextWithChunkInfo, page, pageSize int) ([]sto
 	return texts[start:end], end < len(texts)
 }
 
-func (s *Service) FullTexts(userID int64) ([]storage.FullText, error) {
-	return s.s.GetFullTexts(userID)
+func (s *Service) FullTexts(userID int64, after *time.Time) ([]storage.FullText, error) {
+	return s.s.GetFullTexts(userID, after)
 }
 
 func calculateCompletionPercent(text storage.TextWithChunkInfo) int {
@@ -308,6 +308,7 @@ func (s *Service) SyncTexts(userID int64, texts []SyncText) ([]SyncText, error) 
 			if !ok {
 				continue
 			}
+			delete(syncTextMap, t.UUID)
 			if syncText.ModifiedAt.After(t.ModifiedAt) {
 				t.CurrentChunk = syncText.CurrentChunk
 				t.ModifiedAt = syncText.ModifiedAt
@@ -323,6 +324,16 @@ func (s *Service) SyncTexts(userID int64, texts []SyncText) ([]SyncText, error) 
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to update texts")
+	}
+	// all texts that are left in syncTextMap are not found on server
+	for _, t := range syncTextMap {
+		result = append(result, SyncText{
+			TextUUID: t.TextUUID,
+			Deleted:  true,
+		})
+	}
 	return result, err
 }
 
