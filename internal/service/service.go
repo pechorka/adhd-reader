@@ -9,6 +9,7 @@ import (
 	"github.com/pechorka/adhd-reader/internal/storage"
 
 	"github.com/pechorka/adhd-reader/pkg/chance"
+	"github.com/pechorka/adhd-reader/pkg/randstring"
 	"github.com/pechorka/adhd-reader/pkg/textspliter"
 	"github.com/pechorka/adhd-reader/pkg/webscraper"
 	"github.com/pkg/errors"
@@ -18,6 +19,7 @@ var ErrTextFinished = errors.New("text finished")
 var ErrFirstChunk = errors.New("first chunk")
 var ErrTextNotSelected = errors.New("text is not selected")
 var ErrTextNotUTF8 = errors.New("text is not valid utf8")
+var ErrInvalidToken = errors.New("invalid token")
 
 const telegramMessageLengthLimit = 4096
 
@@ -26,19 +28,31 @@ type Chancer interface {
 	PickWin(inputs ...chance.WinInput)
 }
 
+type Encryptor interface {
+	EncryptString(plaintext string) (string, error)
+	DecryptString(ciphertext string) (string, error)
+}
+
 type Service struct {
 	s         *storage.Storage
 	scrapper  *webscraper.WebScrapper
 	chancer   Chancer
+	encryptor Encryptor
 	chunkSize int64
 }
 
-func NewService(s *storage.Storage, scrapper *webscraper.WebScrapper, chunkSize int64) *Service {
+func NewService(
+	s *storage.Storage,
+	chunkSize int64,
+	scrapper *webscraper.WebScrapper,
+	encryptor Encryptor,
+) *Service {
 	return &Service{
 		s:         s,
-		scrapper:  scrapper,
 		chunkSize: chunkSize,
 		chancer:   chance.Default,
+		encryptor: encryptor,
+		scrapper:  scrapper,
 	}
 }
 
@@ -828,4 +842,52 @@ func (s *Service) GetStatsAndLevel(userID int64) (*Stat, *Level, error) {
 		return nil, nil, err
 	}
 	return mapDbStatToServiceStat(&dbStat), mapDbLevelToServiceLevel(&dbLevel), nil
+}
+
+func (s *Service) GetAuthToken(userID int64) (string, error) {
+	token, err := s.s.GetTokenByUserID(userID)
+	switch err {
+	case nil:
+		return token, nil
+	case storage.ErrNotFound:
+	default:
+		return "", err
+	}
+	return s.newToken(userID)
+}
+
+func (s *Service) ReIssueAuthToken(userID int64) (string, error) {
+	err := s.s.DeleteAuthToken(userID)
+	if err != nil && err != storage.ErrNotFound {
+		return "", errors.Wrap(err, "failed to delete auth token")
+	}
+	return s.newToken(userID)
+}
+
+func (s *Service) ParseToken(token string) (int64, error) {
+	rawToken, err := s.encryptor.DecryptString(token)
+	if err != nil {
+		return 0, ErrInvalidToken
+	}
+	userID, err := s.s.GetUserIDByAuthToken(rawToken)
+	if err != nil {
+		if err == storage.ErrNotFound {
+			return 0, ErrInvalidToken
+		}
+		return 0, errors.Wrap(err, "failed to get user id by auth token")
+	}
+	return userID, nil
+}
+
+func (s *Service) newToken(userID int64) (string, error) {
+	rawToken := randstring.Generate(32)
+	token, err := s.encryptor.EncryptString(rawToken)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to encrypt token")
+	}
+	err = s.s.SetAuthToken(userID, rawToken)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to set auth token")
+	}
+	return token, nil
 }

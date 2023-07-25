@@ -15,7 +15,7 @@ import (
 )
 
 func TestService_ListTexts(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	text1ID, err := srv.AddText(userID, "text1Name", "text1")
@@ -34,7 +34,7 @@ func TestService_ListTexts(t *testing.T) {
 }
 
 func TestService_ListTextsPagination(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	text1ID, err := srv.AddText(userID, "text1Name", "text1")
@@ -64,7 +64,7 @@ func TestService_ListTextsPagination(t *testing.T) {
 }
 
 func TestService_SelectText(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	text1ID, err := srv.AddText(userID, "text1Name", "text1")
@@ -91,7 +91,7 @@ func TestService_SelectText(t *testing.T) {
 }
 
 func TestService_DeleteTextByUUID(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	text1ID, err := srv.AddText(userID, "text1Name", "text1")
@@ -124,7 +124,7 @@ func TestService_DeleteTextByUUID(t *testing.T) {
 }
 
 func TestService_DeleteTextByName(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	_, err := srv.AddText(userID, "text1Name", "text1")
@@ -157,7 +157,7 @@ func TestService_DeleteTextByName(t *testing.T) {
 }
 
 func TestService_PageNavigation(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 5)
+	srv := NewService(testStorage(t), 5, nil, nil)
 	userID := rand.Int63()
 	textID, err := srv.AddText(
 		userID, "textName",
@@ -192,7 +192,7 @@ func TestService_PageNavigation(t *testing.T) {
 }
 
 func TestService_SetPage(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 5)
+	srv := NewService(testStorage(t), 5, nil, nil)
 	userID := rand.Int63()
 	textID, err := srv.AddText(
 		userID, "textName",
@@ -223,7 +223,7 @@ func TestService_SetPage(t *testing.T) {
 
 func TestService_SetChunkSize(t *testing.T) {
 	store := testStorage(t)
-	srv := NewService(store, nil, 5)
+	srv := NewService(store, 5, nil, nil)
 	userID := rand.Int63()
 
 	err := srv.SetChunkSize(userID, -1)
@@ -238,7 +238,7 @@ func TestService_SetChunkSize(t *testing.T) {
 func TestDustOnNextChunk(t *testing.T) {
 	t.Run("dust is added", func(t *testing.T) {
 		store := testStorage(t)
-		srv := NewService(store, nil, 5)
+		srv := NewService(store, 5, nil, nil)
 		srv.chancer = &mockChancer{
 			winResult:          true,
 			pickWinResultIndex: 0, // index of red dust
@@ -254,7 +254,7 @@ func TestDustOnNextChunk(t *testing.T) {
 
 	t.Run("dust is not added", func(t *testing.T) {
 		store := testStorage(t)
-		srv := NewService(store, nil, 5)
+		srv := NewService(store, 5, nil, nil)
 		srv.chancer = &mockChancer{
 			winResult: false,
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/pechorka/adhd-reader/internal/storage"
 
 	"github.com/pechorka/adhd-reader/cmd/tgbot/internal/bot"
+	"github.com/pechorka/adhd-reader/pkg/encryptor"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/i18n"
 	"github.com/pechorka/adhd-reader/pkg/queue"
@@ -30,6 +31,7 @@ type config struct {
 	Debug   bool    `json:"debug"`
 	DbPath  string  `json:"db_path"`
 	Admins  []int64 `json:"admins"`
+	Secret  string  `json:"secret"`
 }
 
 func readCfg(path string) (*config, error) {
@@ -89,7 +91,8 @@ func run() error {
 	defer watcher.Close()
 
 	scrapper := webscraper.New()
-	service := service.NewService(store, scrapper, 500)
+	encryptor := encryptor.NewEncryptor(cfg.Secret)
+	service := service.NewService(store, 500, scrapper, encryptor)
 	msgQueue := queue.NewMessageQueue(queue.Config{})
 	fileLoader := fileloader.NewLoader(fileloader.Config{
 		MaxFileSize: defaultMaxFileSize,
