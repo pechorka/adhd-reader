@@ -376,13 +376,18 @@ func (s *Service) CurrentOrFirstChunk(userID int64) (storage.Text, string, Chunk
 
 type ChunkType string
 
+func (c ChunkType) String() string {
+	return string(c)
+}
+
 const (
 	ChunkTypeFirst ChunkType = "first"
 	ChunkTypeLast  ChunkType = "last"
+	ChunkTypeOther ChunkType = "other"
 )
 
 func (s *Service) selectChunk(userID int64, selectChunk storage.SelectChunkFunc) (storage.Text, string, ChunkType, error) {
-	var chunkType ChunkType
+	var chunkType ChunkType = ChunkTypeOther
 	var curText storage.Text
 	text, err := s.s.SelectChunk(userID, func(text storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
 		curText = text

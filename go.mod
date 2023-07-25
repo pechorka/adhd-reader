@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/fsnotify/fsnotify v1.6.0
+	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/google/uuid v1.3.0
 	github.com/gtank/cryptopasta v0.0.0-20170601214702-1f550f6f2f69

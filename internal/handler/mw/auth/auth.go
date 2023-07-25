@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/pechorka/adhd-reader/internal/handler/herror"
+	"github.com/pechorka/adhd-reader/internal/handler/internal/respond"
 )
 
 type AuthService interface {
@@ -28,18 +28,18 @@ func (mw *AuthMW) Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" || len(authHeader) < len(basicPrefix) {
-			herror.RespondErrorWithCode(w,
+			respond.ErrorWithCode(w,
 				http.StatusUnauthorized,
-				herror.CODE_AUTH_HEADER_MISSING,
+				respond.CODE_AUTH_HEADER_MISSING,
 			)
 			return
 		}
 		token := authHeader[len(basicPrefix):]
 		userID, err := mw.svc.ParseToken(token)
 		if err != nil {
-			herror.RespondErrorWithCode(w,
+			respond.ErrorWithCode(w,
 				http.StatusUnauthorized,
-				herror.CODE_AUTH_TOKEN_INVALID,
+				respond.CODE_AUTH_TOKEN_INVALID,
 			)
 			return
 		}

@@ -7,6 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/pechorka/adhd-reader/internal/handler"
+	"github.com/pechorka/adhd-reader/internal/handler/mw/auth"
 	"github.com/pechorka/adhd-reader/internal/service"
 	"github.com/pechorka/adhd-reader/internal/storage"
 
@@ -110,6 +113,14 @@ func run() error {
 		return err
 	}
 	go b.Run()
+
+	handlers := handler.NewHandlers(service)
+	mx := chi.NewRouter()
+	authMW := auth.NewAuthMW(service)
+	mx.With(authMW.Auth)
+	mx.Route("/api/v1", func(r chi.Router) {
+		handlers.Register(r)
+	})
 
 	terminate := make(chan os.Signal, 1)
 	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM)

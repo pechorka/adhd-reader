@@ -1,4 +1,4 @@
-package herror
+package respond
 
 import (
 	"encoding/json"
@@ -11,17 +11,17 @@ type Error struct {
 	Text string `json:"text,omitempty"`
 }
 
-func RespondErrorWithCode(w http.ResponseWriter, httpCode, appCode int) {
+func ErrorWithCode(w http.ResponseWriter, httpCode, appCode int) {
 	w.WriteHeader(httpCode)
-	RespondJSON(w, Error{Code: appCode})
+	JSON(w, Error{Code: appCode})
 }
 
 func RespondErrorWithText(w http.ResponseWriter, httpCode, appCode int, errText string) {
 	w.WriteHeader(httpCode)
-	RespondJSON(w, Error{Code: appCode, Text: errText})
+	JSON(w, Error{Code: appCode, Text: errText})
 }
 
-func RespondJSON(w http.ResponseWriter, v interface{}) {
+func JSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(v)
 	if err != nil {
