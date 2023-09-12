@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"math/rand"
 	"time"
 	"unicode/utf8"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/pechorka/adhd-reader/pkg/chance"
 	"github.com/pechorka/adhd-reader/pkg/textspliter"
+	"github.com/pechorka/adhd-reader/pkg/webscraper"
 	"github.com/pkg/errors"
 )
 
@@ -26,12 +28,18 @@ type Chancer interface {
 
 type Service struct {
 	s         *storage.Storage
+	scrapper  *webscraper.WebScrapper
 	chancer   Chancer
 	chunkSize int64
 }
 
-func NewService(s *storage.Storage, chunkSize int64) *Service {
-	return &Service{s: s, chunkSize: chunkSize, chancer: chance.Default}
+func NewService(s *storage.Storage, scrapper *webscraper.WebScrapper, chunkSize int64) *Service {
+	return &Service{
+		s:         s,
+		scrapper:  scrapper,
+		chunkSize: chunkSize,
+		chancer:   chance.Default,
+	}
 }
 
 func (s *Service) SetChunkSize(userID int64, chunkSize int64) error {
@@ -94,6 +102,29 @@ func (s *Service) AddTextFromFile(userID int64, checksum []byte, name, text stri
 		return "", err
 	}
 	return s.s.AddTextFromProcessedFile(userID, name, pf)
+}
+
+func (s *Service) AddTextFromURL(userID int64, url string) (id string, name string, err error) {
+	chunkSize, err := s.getChunkSize(userID)
+	if err != nil {
+		return "", "", err
+	}
+	name, text, err := s.scrapper.Scrape(context.Background(), url)
+	if err != nil {
+		return "", "", err
+	}
+	textChunks, err := s.processText(userID, name, text, chunkSize)
+	if err != nil {
+		return "", "", err
+	}
+	data := storage.NewText{
+		Name:      name,
+		Chunks:    textChunks,
+		Text:      text,
+		ChunkSize: chunkSize,
+	}
+	id, err = s.s.AddText(userID, data)
+	return id, name, err
 }
 
 func (s *Service) processText(userID int64, textName, text string, chunkSize int64) ([]string, error) {

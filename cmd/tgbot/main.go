@@ -15,6 +15,7 @@ import (
 	"github.com/pechorka/adhd-reader/pkg/i18n"
 	"github.com/pechorka/adhd-reader/pkg/queue"
 	"github.com/pechorka/adhd-reader/pkg/watcher"
+	"github.com/pechorka/adhd-reader/pkg/webscraper"
 )
 
 // todo move to config
@@ -87,7 +88,8 @@ func run() error {
 	}
 	defer watcher.Close()
 
-	service := service.NewService(store, 500)
+	scrapper := webscraper.New()
+	service := service.NewService(store, scrapper, 500)
 	msgQueue := queue.NewMessageQueue(queue.Config{})
 	fileLoader := fileloader.NewLoader(fileloader.Config{
 		MaxFileSize: defaultMaxFileSize,

@@ -660,6 +660,20 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 	if text == "" {
 		text = msg.Caption
 	}
+	if contenttype.IsURL(text) {
+		textID, textName, err := b.service.AddTextFromURL(msg.From.ID, text)
+		if err != nil {
+			b.replyErrorWithI18n(msg, errorOnTextSaveMsgId, err)
+			return
+		}
+		readBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, readButtonMsgId), textSelect+textID)
+		deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, deleteButtonMsgId), deleteText+textID)
+		b.replyToMsgWithI18nWithArgs(msg, textSavedMsgId, map[string]string{
+			"text_name": textName,
+		}, readBtn, deleteBtn)
+		return
+	}
+	// else assume it's plain text
 	b.msgQueue.Add(msg.From.ID, text)
 }
 
