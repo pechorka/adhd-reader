@@ -19,6 +19,15 @@ func IsPDF(contentType string) bool {
 	return strings.HasPrefix(contentType, "application/pdf")
 }
 
+func IsURLs(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		if !IsURL(line) {
+			return false
+		}
+	}
+	return true
+}
+
 // IsURL returns true if content contains only URL
 func IsURL(content string) bool {
 	content = strings.TrimSpace(content)

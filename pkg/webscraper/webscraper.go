@@ -3,6 +3,7 @@ package webscraper
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/pechorka/adhd-reader/pkg/webscraper/telegraph"
 )
@@ -27,6 +28,7 @@ func New() *WebScrapper {
 }
 
 func (ws *WebScrapper) Scrape(ctx context.Context, link string) (string, string, error) {
+	link = strings.TrimSpace(link)
 	for _, s := range ws.scrapers {
 		if s.Support(link) {
 			return s.Scrape(ctx, link)
