@@ -237,7 +237,7 @@ func TestService_SetChunkSize(t *testing.T) {
 }
 
 func TestService_SyncTexts(t *testing.T) {
-	srv := NewService(testStorage(t), 100, nil)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	text1ID, err := srv.AddText(userID, "text1Name", "text1")
