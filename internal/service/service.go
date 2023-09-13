@@ -9,6 +9,7 @@ import (
 	"github.com/pechorka/adhd-reader/internal/storage"
 
 	"github.com/pechorka/adhd-reader/pkg/chance"
+	"github.com/pechorka/adhd-reader/pkg/randstring"
 	"github.com/pechorka/adhd-reader/pkg/textspliter"
 	"github.com/pechorka/adhd-reader/pkg/webscraper"
 	"github.com/pkg/errors"
@@ -18,6 +19,7 @@ var ErrTextFinished = errors.New("text finished")
 var ErrFirstChunk = errors.New("first chunk")
 var ErrTextNotSelected = errors.New("text is not selected")
 var ErrTextNotUTF8 = errors.New("text is not valid utf8")
+var ErrInvalidToken = errors.New("invalid token")
 
 const telegramMessageLengthLimit = 4096
 
@@ -26,19 +28,31 @@ type Chancer interface {
 	PickWin(inputs ...chance.WinInput)
 }
 
+type Encryptor interface {
+	EncryptString(plaintext string) (string, error)
+	DecryptString(ciphertext string) (string, error)
+}
+
 type Service struct {
 	s         *storage.Storage
 	scrapper  *webscraper.WebScrapper
 	chancer   Chancer
+	encryptor Encryptor
 	chunkSize int64
 }
 
-func NewService(s *storage.Storage, scrapper *webscraper.WebScrapper, chunkSize int64) *Service {
+func NewService(
+	s *storage.Storage,
+	chunkSize int64,
+	scrapper *webscraper.WebScrapper,
+	encryptor Encryptor,
+) *Service {
 	return &Service{
 		s:         s,
-		scrapper:  scrapper,
 		chunkSize: chunkSize,
 		chancer:   chance.Default,
+		encryptor: encryptor,
+		scrapper:  scrapper,
 	}
 }
 
@@ -192,8 +206,8 @@ func paginateTexts(texts []storage.TextWithChunkInfo, page, pageSize int) ([]sto
 	return texts[start:end], end < len(texts)
 }
 
-func (s *Service) FullTexts(userID int64) ([]storage.FullText, error) {
-	return s.s.GetFullTexts(userID)
+func (s *Service) FullTexts(userID int64, after *time.Time) ([]storage.FullText, error) {
+	return s.s.GetFullTexts(userID, after)
 }
 
 func calculateCompletionPercent(text storage.TextWithChunkInfo) int {
@@ -236,7 +250,6 @@ func (s *Service) SelectText(userID int64, textUUID string) (storage.Text, error
 		for i, t := range texts.Texts {
 			if t.UUID == textUUID {
 				texts.Current = i
-				texts.Texts[i].ModifiedAt = time.Now()
 				text = t
 				return nil
 			}
@@ -266,6 +279,62 @@ func (s *Service) RenameText(userID int64, newName string) (string, error) {
 		return nil
 	})
 	return oldName, err
+}
+
+type SyncText struct {
+	TextUUID     string
+	CurrentChunk int64
+	ModifiedAt   time.Time
+	Deleted      bool
+}
+
+func (s *Service) SyncTexts(userID int64, texts []SyncText) ([]SyncText, error) {
+	syncTextMap := make(map[string]SyncText, len(texts))
+	for _, t := range texts {
+		if t.Deleted {
+			err := s.s.DeleteTextByUUID(userID, t.TextUUID)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+		syncTextMap[t.TextUUID] = t
+	}
+	var result []SyncText
+	err := s.s.UpdateTexts(userID, func(texts *storage.UserTexts) error {
+		for i := range texts.Texts {
+			t := texts.Texts[i]
+			syncText, ok := syncTextMap[t.UUID]
+			if !ok {
+				continue
+			}
+			delete(syncTextMap, t.UUID)
+			if syncText.ModifiedAt.After(t.ModifiedAt) {
+				t.CurrentChunk = syncText.CurrentChunk
+				t.ModifiedAt = syncText.ModifiedAt
+				texts.Texts[i] = t
+				continue
+			}
+			// text on server is newer
+			result = append(result, SyncText{
+				TextUUID:     t.UUID,
+				CurrentChunk: t.CurrentChunk,
+				ModifiedAt:   t.ModifiedAt,
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to update texts")
+	}
+	// all texts that are left in syncTextMap are not found on server
+	for _, t := range syncTextMap {
+		result = append(result, SyncText{
+			TextUUID: t.TextUUID,
+			Deleted:  true,
+		})
+	}
+	return result, err
 }
 
 func (s *Service) SetPage(userID, page int64) error {
@@ -307,13 +376,18 @@ func (s *Service) CurrentOrFirstChunk(userID int64) (storage.Text, string, Chunk
 
 type ChunkType string
 
+func (c ChunkType) String() string {
+	return string(c)
+}
+
 const (
 	ChunkTypeFirst ChunkType = "first"
 	ChunkTypeLast  ChunkType = "last"
+	ChunkTypeOther ChunkType = "other"
 )
 
 func (s *Service) selectChunk(userID int64, selectChunk storage.SelectChunkFunc) (storage.Text, string, ChunkType, error) {
-	var chunkType ChunkType
+	var chunkType ChunkType = ChunkTypeOther
 	var curText storage.Text
 	text, err := s.s.SelectChunk(userID, func(text storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
 		curText = text
@@ -828,4 +902,52 @@ func (s *Service) GetStatsAndLevel(userID int64) (*Stat, *Level, error) {
 		return nil, nil, err
 	}
 	return mapDbStatToServiceStat(&dbStat), mapDbLevelToServiceLevel(&dbLevel), nil
+}
+
+func (s *Service) GetAuthToken(userID int64) (string, error) {
+	token, err := s.s.GetTokenByUserID(userID)
+	switch err {
+	case nil:
+		return token, nil
+	case storage.ErrNotFound:
+	default:
+		return "", err
+	}
+	return s.newToken(userID)
+}
+
+func (s *Service) ReIssueAuthToken(userID int64) (string, error) {
+	err := s.s.DeleteAuthToken(userID)
+	if err != nil && err != storage.ErrNotFound {
+		return "", errors.Wrap(err, "failed to delete auth token")
+	}
+	return s.newToken(userID)
+}
+
+func (s *Service) ParseToken(token string) (int64, error) {
+	rawToken, err := s.encryptor.DecryptString(token)
+	if err != nil {
+		return 0, ErrInvalidToken
+	}
+	userID, err := s.s.GetUserIDByAuthToken(rawToken)
+	if err != nil {
+		if err == storage.ErrNotFound {
+			return 0, ErrInvalidToken
+		}
+		return 0, errors.Wrap(err, "failed to get user id by auth token")
+	}
+	return userID, nil
+}
+
+func (s *Service) newToken(userID int64) (string, error) {
+	rawToken := randstring.Generate(32)
+	token, err := s.encryptor.EncryptString(rawToken)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to encrypt token")
+	}
+	err = s.s.SetAuthToken(userID, rawToken)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to set auth token")
+	}
+	return token, nil
 }

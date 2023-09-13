@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pechorka/adhd-reader/internal/storage"
 	"github.com/pechorka/adhd-reader/pkg/chance"
@@ -15,7 +16,7 @@ import (
 )
 
 func TestService_ListTexts(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	text1ID, err := srv.AddText(userID, "text1Name", "text1")
@@ -34,7 +35,7 @@ func TestService_ListTexts(t *testing.T) {
 }
 
 func TestService_ListTextsPagination(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	text1ID, err := srv.AddText(userID, "text1Name", "text1")
@@ -64,7 +65,7 @@ func TestService_ListTextsPagination(t *testing.T) {
 }
 
 func TestService_SelectText(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	text1ID, err := srv.AddText(userID, "text1Name", "text1")
@@ -91,7 +92,7 @@ func TestService_SelectText(t *testing.T) {
 }
 
 func TestService_DeleteTextByUUID(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	text1ID, err := srv.AddText(userID, "text1Name", "text1")
@@ -124,7 +125,7 @@ func TestService_DeleteTextByUUID(t *testing.T) {
 }
 
 func TestService_DeleteTextByName(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 100)
+	srv := NewService(testStorage(t), 100, nil, nil)
 	userID := rand.Int63()
 
 	_, err := srv.AddText(userID, "text1Name", "text1")
@@ -157,7 +158,7 @@ func TestService_DeleteTextByName(t *testing.T) {
 }
 
 func TestService_PageNavigation(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 5)
+	srv := NewService(testStorage(t), 5, nil, nil)
 	userID := rand.Int63()
 	textID, err := srv.AddText(
 		userID, "textName",
@@ -192,7 +193,7 @@ func TestService_PageNavigation(t *testing.T) {
 }
 
 func TestService_SetPage(t *testing.T) {
-	srv := NewService(testStorage(t), nil, 5)
+	srv := NewService(testStorage(t), 5, nil, nil)
 	userID := rand.Int63()
 	textID, err := srv.AddText(
 		userID, "textName",
@@ -223,7 +224,7 @@ func TestService_SetPage(t *testing.T) {
 
 func TestService_SetChunkSize(t *testing.T) {
 	store := testStorage(t)
-	srv := NewService(store, nil, 5)
+	srv := NewService(store, 5, nil, nil)
 	userID := rand.Int63()
 
 	err := srv.SetChunkSize(userID, -1)
@@ -235,10 +236,48 @@ func TestService_SetChunkSize(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestService_SyncTexts(t *testing.T) {
+	srv := NewService(testStorage(t), 100, nil, nil)
+	userID := rand.Int63()
+
+	text1ID, err := srv.AddText(userID, "text1Name", "text1")
+	require.NoError(t, err)
+	text2ID, err := srv.AddText(userID, "text2Name", "text2")
+	require.NoError(t, err)
+	text3ID, err := srv.AddText(userID, "text3Name", "text3")
+	require.NoError(t, err)
+	nonExistentTextID := "nonexistent"
+
+	now := time.Now()
+	syncTexts := []SyncText{
+		// date on server is newer, so mobile should be updated
+		{TextUUID: text1ID, ModifiedAt: now.AddDate(0, 0, -1), CurrentChunk: 10},
+		// date on server is older, so server should be updated
+		{TextUUID: text2ID, ModifiedAt: now.AddDate(0, 0, 1), CurrentChunk: 20},
+		// text is deleted on mobile
+		{TextUUID: text3ID, Deleted: true},
+		// text is deleted on server
+		{TextUUID: nonExistentTextID, ModifiedAt: now.AddDate(0, 0, -1), CurrentChunk: 10},
+	}
+
+	syncOnMobile, err := srv.SyncTexts(userID, syncTexts)
+	require.NoError(t, err)
+	require.Len(t, syncOnMobile, 2)
+	require.Equal(t, text1ID, syncOnMobile[0].TextUUID)
+	require.EqualValues(t, storage.NotSelected, syncOnMobile[0].CurrentChunk)
+	require.Equal(t, nonExistentTextID, syncOnMobile[1].TextUUID)
+	require.True(t, syncOnMobile[1].Deleted)
+
+	texts, more, err := srv.ListTexts(userID, 1, 50)
+	require.NoError(t, err)
+	require.False(t, more)
+	require.Len(t, texts, 2)
+}
+
 func TestDustOnNextChunk(t *testing.T) {
 	t.Run("dust is added", func(t *testing.T) {
 		store := testStorage(t)
-		srv := NewService(store, nil, 5)
+		srv := NewService(store, 5, nil, nil)
 		srv.chancer = &mockChancer{
 			winResult:          true,
 			pickWinResultIndex: 0, // index of red dust
@@ -254,7 +293,7 @@ func TestDustOnNextChunk(t *testing.T) {
 
 	t.Run("dust is not added", func(t *testing.T) {
 		store := testStorage(t)
-		srv := NewService(store, nil, 5)
+		srv := NewService(store, 5, nil, nil)
 		srv.chancer = &mockChancer{
 			winResult: false,
 		}
