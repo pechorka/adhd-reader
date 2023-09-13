@@ -15,7 +15,10 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound      = errors.New("not found")
+	ErrAlreadyExists = errors.New("already exists")
+)
 
 const NotSelected = -1
 
@@ -28,6 +31,7 @@ var (
 	bktStat           = []byte("stat")
 	bktRecipe         = []byte("recipe")
 	bktUserRecipe     = []byte("user_recipe")
+	bktAuth           = []byte("auth")
 )
 
 var (
@@ -204,7 +208,7 @@ func (s *Storage) GetTexts(id int64) ([]TextWithChunkInfo, error) {
 	return result, err
 }
 
-func (s *Storage) GetFullTexts(id int64) ([]FullText, error) {
+func (s *Storage) GetFullTexts(id int64, after *time.Time) ([]FullText, error) {
 	var result []FullText
 	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bktUserInfo)
@@ -215,6 +219,11 @@ func (s *Storage) GetFullTexts(id int64) ([]FullText, error) {
 		texts, err := getTexts(b, textsId(id))
 		if err != nil {
 			return err
+		}
+		if after != nil {
+			texts.Texts = filterTexts(texts.Texts, func(text Text) bool {
+				return text.CreatedAt.After(*after)
+			})
 		}
 		result, err = fullTexts(tx, texts)
 		return err
@@ -341,6 +350,9 @@ func (s *Storage) deleteTextBy(userID int64, predicate func(Text) bool) error {
 				texts.Texts = append(texts.Texts[:i], texts.Texts[i+1:]...)
 				if texts.Current == i {
 					texts.Current = NotSelected
+				}
+				if texts.Current > i {
+					texts.Current--
 				}
 				found = true
 				break
@@ -605,6 +617,88 @@ func (s *Storage) UpdateUserRecipe(userID int64, recipeName string, updFunc func
 	return &userRecipe, err
 }
 
+func (s *Storage) SetAuthToken(userID int64, token string) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bktAuth)
+		if err != nil {
+			return err
+		}
+		byteUserID := int64ToBytes(userID)
+		if b.Get(byteUserID) != nil {
+			return ErrAlreadyExists
+		}
+		byteToken := []byte(token)
+		if dbUserID := b.Get(byteToken); dbUserID != nil {
+			if bytes.Equal(dbUserID, byteUserID) {
+				return nil
+			}
+			return ErrAlreadyExists
+		}
+		if err = b.Put(byteToken, byteUserID); err != nil {
+			return errors.Wrap(err, "failed to put user id by token")
+		}
+		if err = b.Put(byteUserID, byteToken); err != nil {
+			return errors.Wrap(err, "failed to put token by user id")
+		}
+		return nil
+	})
+}
+
+func (s *Storage) GetUserIDByAuthToken(token string) (int64, error) {
+	var userID int64
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktAuth)
+		if b == nil {
+			return ErrNotFound
+		}
+		byteUserID := b.Get([]byte(token))
+		if byteUserID == nil {
+			return ErrNotFound
+		}
+		userID = bytesToInt64(byteUserID)
+		return nil
+	})
+	return userID, err
+}
+
+func (s *Storage) GetTokenByUserID(userID int64) (string, error) {
+	var token string
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktAuth)
+		if b == nil {
+			return ErrNotFound
+		}
+		byteToken := b.Get(int64ToBytes(userID))
+		if byteToken == nil {
+			return ErrNotFound
+		}
+		token = string(byteToken)
+		return nil
+	})
+	return token, err
+}
+
+func (s *Storage) DeleteAuthToken(userID int64) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktAuth)
+		if b == nil {
+			return ErrNotFound
+		}
+		byteUserID := int64ToBytes(userID)
+		byteToken := b.Get(byteUserID)
+		if byteToken == nil {
+			return ErrNotFound
+		}
+		if err := b.Delete(byteToken); err != nil {
+			return errors.Wrap(err, "failed to delete token by user id")
+		}
+		if err := b.Delete(byteUserID); err != nil {
+			return errors.Wrap(err, "failed to delete user id by token")
+		}
+		return nil
+	})
+}
+
 // helper functions
 
 var textsPrefix = []byte("texts-")
@@ -619,6 +713,16 @@ func getTexts(b *bolt.Bucket, id []byte) (texts UserTexts, err error) {
 		return defaultUserTexts(), nil
 	}
 	return unmarshalTexts(v)
+}
+
+func filterTexts(texts []Text, predicate func(Text) bool) []Text {
+	result := make([]Text, 0, len(texts))
+	for _, text := range texts {
+		if predicate(text) {
+			result = append(result, text)
+		}
+	}
+	return result
 }
 
 func unmarshalTexts(v []byte) (texts UserTexts, err error) {
