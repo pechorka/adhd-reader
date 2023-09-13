@@ -14,6 +14,7 @@ require (
 	github.com/valyala/fasttemplate v1.2.2
 	go.etcd.io/bbolt v1.3.7
 	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
+	golang.org/x/net v0.10.0
 )
 
 require (
