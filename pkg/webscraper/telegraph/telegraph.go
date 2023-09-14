@@ -83,6 +83,7 @@ func text(s *goquery.Selection) string {
 		}
 		if n.Type == html.ElementNode && n.Data == "img" {
 			if imgLink, ok := findAttr(n, "src"); ok {
+				buf.WriteString("https://telegra.ph")
 				buf.WriteString(imgLink)
 				buf.WriteByte('\n')
 			}
