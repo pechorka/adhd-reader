@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/pechorka/adhd-reader/pkg/webscraper/telegram"
 	"github.com/pechorka/adhd-reader/pkg/webscraper/telegraph"
 )
 
@@ -23,6 +24,7 @@ func New() *WebScrapper {
 	return &WebScrapper{
 		scrapers: []scraper{
 			telegraph.New(),
+			telegram.New(),
 		},
 	}
 }
