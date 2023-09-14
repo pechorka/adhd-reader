@@ -49,6 +49,10 @@ func FindSupportedLinks(text string) []string {
 	return globalRegexp.FindAllString(text, -1)
 }
 
+func IsSupportedLink(link string) bool {
+	return globalRegexp.MatchString(link)
+}
+
 func mustBuildGlobalRegex(allRegs ...string) *regexp.Regexp {
 	combined := strings.Join(allRegs, "|")
 	return regexp.MustCompile(combined)

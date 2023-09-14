@@ -683,6 +683,16 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 		}
 		return
 	}
+	var supportedLinks []string
+	for _, entity := range msg.Entities {
+		if entity.URL != "" && webscraper.IsSupportedLink(entity.URL) {
+			supportedLinks = append(supportedLinks, entity.URL)
+		}
+	}
+	if len(supportedLinks) > 0 {
+		b.sendToUser(msg.From.ID, strings.Join(supportedLinks, "\n"))
+		b.replyToUserWithI18n(msg.From, supportedLinksTutorialMsgId)
+	}
 	// else assume it's plain text
 	b.msgQueue.Add(msg.From.ID, text)
 }
