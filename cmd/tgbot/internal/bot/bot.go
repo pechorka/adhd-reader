@@ -117,13 +117,15 @@ func (b *Bot) Run() {
 	updates := b.bot.GetUpdatesChan(u)
 
 	for update := range updates {
-		if msg := update.Message; msg != nil {
-			b.handleMsg(msg)
-		}
+		go func(update tgbotapi.Update) {
+			if msg := update.Message; msg != nil {
+				b.handleMsg(msg)
+			}
 
-		if cb := update.CallbackQuery; cb != nil {
-			b.handleCallback(cb)
-		}
+			if cb := update.CallbackQuery; cb != nil {
+				b.handleCallback(cb)
+			}
+		}(update)
 	}
 }
 
@@ -664,8 +666,11 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 		for _, link := range strings.Split(text, "\n") {
 			textID, textName, err := b.service.AddTextFromURL(msg.From.ID, link)
 			if err != nil {
-				b.replyErrorWithI18n(msg, errorOnTextSaveMsgId, err)
-				return
+				b.replyToMsgWithI18nWithArgs(msg, errorOnTextSaveFromLink, map[string]string{
+					"link":  link,
+					"error": err.Error(),
+				})
+				continue
 			}
 			readBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, readButtonMsgId), textSelect+textID)
 			deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, deleteButtonMsgId), deleteText+textID)
