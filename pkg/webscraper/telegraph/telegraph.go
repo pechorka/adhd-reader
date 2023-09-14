@@ -63,7 +63,6 @@ func (s *Scraper) Scrape(ctx context.Context, link string) (string, string, erro
 		return "", "", errors.Wrap(err, "create goquery document from telegraph response body")
 	}
 
-	// exctract  <meta property="og:title" content="Основы здорового рациона">
 	title, ok := doc.Find("meta[property='og:title']").Attr("content")
 	if !ok {
 		return "", "", errors.New("can't find title")
@@ -76,13 +75,19 @@ func (s *Scraper) Scrape(ctx context.Context, link string) (string, string, erro
 // text is modified version of goquery.Selection.Text, that concatenates each node with new line
 func text(s *goquery.Selection) string {
 	var buf bytes.Buffer
-
 	var f func(*html.Node)
 	f = func(n *html.Node) {
 		if n.Type == html.TextNode {
 			buf.WriteString(n.Data)
 			buf.WriteByte('\n')
 		}
+		if n.Type == html.ElementNode && n.Data == "img" {
+			if imgLink, ok := findAttr(n, "src"); ok {
+				buf.WriteString(imgLink)
+				buf.WriteByte('\n')
+			}
+		}
+
 		if n.FirstChild != nil {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				f(c)
@@ -94,4 +99,14 @@ func text(s *goquery.Selection) string {
 	}
 
 	return buf.String()
+}
+
+func findAttr(n *html.Node, attrKey string) (string, bool) {
+	for _, attr := range n.Attr {
+		if attr.Key == attrKey {
+			return attr.Val, true
+		}
+	}
+
+	return "", false
 }
