@@ -665,19 +665,21 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 	}
 	if contenttype.IsURLs(text) {
 		for _, link := range strings.Split(text, "\n") {
-			textID, textName, err := b.service.AddTextFromURL(msg.From.ID, link)
-			if err != nil {
-				b.replyToMsgWithI18nWithArgs(msg, errorOnTextSaveFromLink, map[string]string{
-					"link":  link,
-					"error": err.Error(),
-				})
-				continue
-			}
-			readBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, readButtonMsgId), textSelect+textID)
-			deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, deleteButtonMsgId), deleteText+textID)
-			b.replyToMsgWithI18nWithArgs(msg, textSavedMsgId, map[string]string{
-				"text_name": textName,
-			}, readBtn, deleteBtn)
+			go func(link string) {
+				textID, textName, err := b.service.AddTextFromURL(msg.From.ID, link)
+				if err != nil {
+					b.replyToMsgWithI18nWithArgs(msg, errorOnTextSaveFromLink, map[string]string{
+						"link":  link,
+						"error": err.Error(),
+					})
+					return
+				}
+				readBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, readButtonMsgId), textSelect+textID)
+				deleteBtn := tgbotapi.NewInlineKeyboardButtonData(b.getText(msg.From, deleteButtonMsgId), deleteText+textID)
+				b.replyToMsgWithI18nWithArgs(msg, textSavedMsgId, map[string]string{
+					"text_name": textName,
+				}, readBtn, deleteBtn)
+			}(link)
 		}
 		return
 	}
