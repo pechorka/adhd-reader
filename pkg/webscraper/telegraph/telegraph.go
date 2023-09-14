@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -14,6 +14,10 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 )
+
+const LinkPattern = `https?:\/\/telegra\.ph\/\S+`
+
+var regExp = regexp.MustCompile(LinkPattern)
 
 type Scraper struct {
 	httpCli *http.Client
@@ -28,12 +32,7 @@ func New() *Scraper {
 }
 
 func (s *Scraper) Support(link string) bool {
-	u, err := url.Parse(link)
-	if err != nil {
-		return false
-	}
-
-	return u.Hostname() == "telegra.ph"
+	return regExp.MatchString(link)
 }
 
 func (s *Scraper) Scrape(ctx context.Context, link string) (string, string, error) {

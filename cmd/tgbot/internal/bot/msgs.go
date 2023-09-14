@@ -83,4 +83,8 @@ const (
 	eighthMsg = "onboarding_eighth_msg"
 )
 
+const (
+	supportedLinksTutorialMsgId = "supported_links_tutorial"
+)
+
 const helpMsg = "help_msg"

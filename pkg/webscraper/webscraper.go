@@ -3,6 +3,7 @@ package webscraper
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/pechorka/adhd-reader/pkg/webscraper/telegram"
@@ -10,6 +11,10 @@ import (
 )
 
 var ErrUnsupportedLink = errors.New("unsupported link")
+var globalRegexp = mustBuildGlobalRegex(
+	telegraph.LinkPattern,
+	telegram.LinkPattern,
+)
 
 type scraper interface {
 	Support(link string) bool
@@ -38,4 +43,13 @@ func (ws *WebScrapper) Scrape(ctx context.Context, link string) (string, string,
 	}
 
 	return "", "", ErrUnsupportedLink
+}
+
+func FindSupportedLinks(text string) []string {
+	return globalRegexp.FindAllString(text, -1)
+}
+
+func mustBuildGlobalRegex(allRegs ...string) *regexp.Regexp {
+	combined := strings.Join(allRegs, "|")
+	return regexp.MustCompile(combined)
 }

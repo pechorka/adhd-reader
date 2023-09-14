@@ -24,6 +24,7 @@ import (
 	"github.com/pechorka/adhd-reader/pkg/queue"
 	"github.com/pechorka/adhd-reader/pkg/runeslice"
 	"github.com/pechorka/adhd-reader/pkg/sizeconverter"
+	"github.com/pechorka/adhd-reader/pkg/webscraper"
 )
 
 const (
@@ -697,9 +698,16 @@ func (b *Bot) onQueueFilled(userID int64, msgText string) {
 		b.sendToUser(userID, "Failed to save text: "+err.Error())
 		return
 	}
+
 	readBtn := tgbotapi.NewInlineKeyboardButtonData("Read", textSelect+textID)
 	deleteBtn := tgbotapi.NewInlineKeyboardButtonData("Delete", deleteText+textID)
 	b.sendToUser(userID, fmt.Sprintf("Text <code>%s</code> is saved", textName), readBtn, deleteBtn)
+
+	supportedLinks := webscraper.FindSupportedLinks(msgText)
+	if len(supportedLinks) > 0 {
+		b.sendToUser(userID, strings.Join(supportedLinks, "\n"))
+		b.replyToUserWithI18n(&tgbotapi.User{ID: userID}, supportedLinksTutorialMsgId)
+	}
 }
 
 func (b *Bot) replyWithText(to *tgbotapi.Message, text string, buttons ...tgbotapi.InlineKeyboardButton) tgbotapi.Message {
