@@ -62,6 +62,9 @@ TODO
 ![image](https://github.com/pechorka/adhd-reader/assets/10058916/bba00e62-f7a4-4d0a-a47a-3b83cc5dbcef)
 ![image](https://github.com/pechorka/adhd-reader/assets/10058916/8b56f654-fea0-43a9-8867-3c6b76b0bb51)
 ![image](https://github.com/pechorka/adhd-reader/assets/10058916/89fca41a-ec86-4622-98d6-253f91fad099)
+А ещё вот такая есть
+![image](https://github.com/pechorka/adhd-reader/assets/10058916/6d1a44c5-3bec-4f3d-801b-5681bf46a782)
+
 
 ## Visual references
 *Можешь еще рефы поискать не по теме, а визуальные, или для каких то решений которые нам бы подошли или просто нравятся. Короче все что клевое на твой вкус и достойно быть у нас в том или ином виде*
