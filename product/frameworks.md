@@ -10,7 +10,7 @@
 [] Comparative product gap
 [] Other
 ### Scope (how wide is the lens of this feedback)
-[] Micro (related tospecific product area)
+[] Micro (related to specific product area)
 [] Macro (larger strategic concern)
 ### Associated Goal (what product goal could this affect)
 [] Retention
@@ -27,7 +27,7 @@
 ### Segment (what set of users does this pertain to)
 ...
 ### Other classifiers (select categories that apply)
-[] Perceptional (user "feels" this way but reality is different; lack of awareness)
+[] Perceptional (user "feels" this way but the reality is different; lack of awareness)
 [] Idealistic (aspirational desire in a perfect world)
 [] Relational (issue related to service (sales, support, etc.); not the product)
 ### Traceback (specify a few users who felt this)
