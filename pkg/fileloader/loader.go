@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	defaultMaxFileSize   = 20 * 1024 * 1024 // 20 MB
+	defaultMaxFileSize   = 50 * 1024 * 1024 // 20 MB
 	defaultClientTimeout = 10 * time.Second
 )
 
