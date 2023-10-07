@@ -5,23 +5,12 @@ import (
 	"strings"
 )
 
-func IsPlainText(contentType string) bool {
-	if strings.HasPrefix(contentType, "text/plain") {
-		return true
-	}
-	if strings.HasPrefix(contentType, "application/octet-stream") {
-		return true
-	}
-	return false
-}
-
-func IsPDF(contentType string) bool {
-	return strings.HasPrefix(contentType, "application/pdf")
-}
-
-func IsEPUB(contentType string) bool {
-	return strings.HasPrefix(contentType, "application/epub+zip")
-}
+const (
+	PlainText   = "text/plain"
+	OctetStream = "application/octet-stream"
+	PDF         = "application/pdf"
+	EPUB        = "application/epub+zip"
+)
 
 func IsURLs(content string) bool {
 	for _, line := range strings.Split(content, "\n") {

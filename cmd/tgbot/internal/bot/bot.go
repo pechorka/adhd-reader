@@ -21,6 +21,7 @@ import (
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/fileparser/epub"
 	"github.com/pechorka/adhd-reader/pkg/fileparser/pdf"
+	"github.com/pechorka/adhd-reader/pkg/fileparser/plaintext"
 	"github.com/pechorka/adhd-reader/pkg/i18n"
 	"github.com/pechorka/adhd-reader/pkg/queue"
 	"github.com/pechorka/adhd-reader/pkg/runeslice"
@@ -589,6 +590,13 @@ func (b *Bot) stats(msg *tgbotapi.Message) {
 
 }
 
+var plainTextParsers = map[string]func([]byte) (string, error){
+	contenttype.OctetStream: plaintext.PlainText,
+	contenttype.PlainText:   plaintext.PlainText,
+	contenttype.PDF:         pdf.PlaintText,
+	contenttype.EPUB:        epub.PlainText,
+}
+
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	if msg.Document.FileSize != 0 && msg.Document.FileSize > b.maxFileSize {
 		b.replyToMsgWithI18nWithArgs(msg, errorOnFileUploadTooBigMsgId, map[string]string{
@@ -596,11 +604,12 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 		})
 		return
 	}
-	switch {
-	case contenttype.IsPlainText(msg.Document.MimeType):
-	case contenttype.IsPDF(msg.Document.MimeType):
-	default:
-		b.replyToMsgWithI18n(msg, errorOnFileUploadInvalidFormatMsgId)
+	parser, ok := plainTextParsers[msg.Document.MimeType]
+	if !ok {
+		b.replyToMsgWithI18nWithArgs(msg, errorOnFileUploadInvalidFormatMsgId, map[string]string{
+			"supported_formats": "txt, pdf, epub",
+		})
+		return
 	}
 	fileURL, err := b.bot.GetFileDirectURL(msg.Document.FileID)
 	if err != nil {
@@ -620,15 +629,7 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 		return
 	}
 
-	var text string
-	switch {
-	case contenttype.IsPlainText(msg.Document.MimeType):
-		text = string(data)
-	case contenttype.IsPDF(msg.Document.MimeType):
-		text, err = pdf.PlaintText(data)
-	case contenttype.IsEPUB(msg.Document.MimeType):
-		text, err = epub.PlainText(data)
-	}
+	text, err := parser(data)
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnFileUploadExtractingTextMsgId, err)
 		return
