@@ -10,6 +10,7 @@ const (
 	OctetStream = "application/octet-stream"
 	PDF         = "application/pdf"
 	EPUB        = "application/epub+zip"
+	FB2_XML     = "application/x-fictionbook+xml"
 )
 
 func IsURLs(content string) bool {

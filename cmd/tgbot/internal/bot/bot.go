@@ -20,6 +20,7 @@ import (
 	"github.com/pechorka/adhd-reader/pkg/filechecksum"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
 	"github.com/pechorka/adhd-reader/pkg/fileparser/epub"
+	"github.com/pechorka/adhd-reader/pkg/fileparser/fb2"
 	"github.com/pechorka/adhd-reader/pkg/fileparser/pdf"
 	"github.com/pechorka/adhd-reader/pkg/fileparser/plaintext"
 	"github.com/pechorka/adhd-reader/pkg/i18n"
@@ -595,6 +596,7 @@ var plainTextParsers = map[string]func([]byte) (string, error){
 	contenttype.PlainText:   plaintext.PlainText,
 	contenttype.PDF:         pdf.PlaintText,
 	contenttype.EPUB:        epub.PlainText,
+	contenttype.FB2_XML:     fb2.PlainText,
 }
 
 func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
@@ -607,7 +609,7 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	parser, ok := plainTextParsers[msg.Document.MimeType]
 	if !ok {
 		b.replyToMsgWithI18nWithArgs(msg, errorOnFileUploadInvalidFormatMsgId, map[string]string{
-			"supported_formats": "txt, pdf, epub",
+			"supported_formats": "txt, pdf, epub, fb2",
 		})
 		return
 	}
