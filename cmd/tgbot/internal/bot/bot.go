@@ -19,8 +19,9 @@ import (
 	"github.com/pechorka/adhd-reader/pkg/contenttype"
 	"github.com/pechorka/adhd-reader/pkg/filechecksum"
 	"github.com/pechorka/adhd-reader/pkg/fileloader"
+	"github.com/pechorka/adhd-reader/pkg/fileparser/epub"
+	"github.com/pechorka/adhd-reader/pkg/fileparser/pdf"
 	"github.com/pechorka/adhd-reader/pkg/i18n"
-	"github.com/pechorka/adhd-reader/pkg/pdfexctractor"
 	"github.com/pechorka/adhd-reader/pkg/queue"
 	"github.com/pechorka/adhd-reader/pkg/runeslice"
 	"github.com/pechorka/adhd-reader/pkg/sizeconverter"
@@ -624,7 +625,9 @@ func (b *Bot) saveTextFromDocument(msg *tgbotapi.Message) {
 	case contenttype.IsPlainText(msg.Document.MimeType):
 		text = string(data)
 	case contenttype.IsPDF(msg.Document.MimeType):
-		text, err = pdfexctractor.ExtractPlainTextFromPDF(data)
+		text, err = pdf.PlaintText(data)
+	case contenttype.IsEPUB(msg.Document.MimeType):
+		text, err = epub.PlainText(data)
 	}
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnFileUploadExtractingTextMsgId, err)

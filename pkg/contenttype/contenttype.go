@@ -19,6 +19,10 @@ func IsPDF(contentType string) bool {
 	return strings.HasPrefix(contentType, "application/pdf")
 }
 
+func IsEPUB(contentType string) bool {
+	return strings.HasPrefix(contentType, "application/epub+zip")
+}
+
 func IsURLs(content string) bool {
 	for _, line := range strings.Split(content, "\n") {
 		if !IsURL(line) {

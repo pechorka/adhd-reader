@@ -1,4 +1,4 @@
-package pdfexctractor
+package pdf
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func ExtractPlainTextFromPDF(data []byte) (_ string, err error) {
+func PlaintText(data []byte) (_ string, err error) {
 	fName := fmt.Sprintf("/tmp/temp-%d.pdf", time.Now().UnixNano())
 	err = os.WriteFile(fName, data, 0644)
 	if err != nil {
