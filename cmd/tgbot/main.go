@@ -30,6 +30,7 @@ const (
 
 // todo migrate to .env
 type config struct {
+	Port    int     `json:"port"`
 	TgToken string  `json:"tg_token"`
 	Debug   bool    `json:"debug"`
 	DbPath  string  `json:"db_path"`
@@ -49,6 +50,9 @@ func readCfg(path string) (*config, error) {
 	}
 	if c.DbPath == "" {
 		c.DbPath = "./db.db"
+	}
+	if c.Port == 0 {
+		c.Port = 8080
 	}
 
 	return &c, nil
