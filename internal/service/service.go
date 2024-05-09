@@ -224,10 +224,14 @@ func (s *Service) QuickWin(userID int64) (storage.TextWithChunkInfo, error) {
 	if err != nil {
 		return storage.TextWithChunkInfo{}, err
 	}
+
 	minDelta := int64(math.MaxInt64)
 	textI := -1
 	for i, t := range texts {
 		delta := t.TotalChunks - t.CurrentChunk
+		if t.CurrentChunk == storage.NotSelected {
+			delta = t.TotalChunks
+		}
 		if delta > 1 && delta < minDelta {
 			textI = i
 			minDelta = delta
