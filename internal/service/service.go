@@ -228,7 +228,7 @@ func (s *Service) QuickWin(userID int64) (storage.TextWithChunkInfo, error) {
 	textI := -1
 	for i, t := range texts {
 		delta := t.TotalChunks - t.CurrentChunk
-		if delta > 0 && delta < minDelta {
+		if delta > 1 && delta < minDelta {
 			textI = i
 			minDelta = delta
 		}
