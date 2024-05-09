@@ -41,7 +41,7 @@ const (
 
 const (
 	defaultMaxFileSize = 20 * 1024 * 1024 // 20 MB
-	defaultPageSize    = 50
+	defaultPageSize    = 40
 )
 
 type Bot struct {
@@ -154,30 +154,28 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		return
 	}
 
-	switch cmd := msg.Command(); cmd {
-	case "start":
+	switch cmd := msg.Command(); {
+	case cmd == "start":
 		b.start(msg)
-	case "list":
+	case cmd == "list":
 		b.listCmd(msg)
-	case "page":
+	case cmd == "page":
 		b.onPageCommand(msg)
-	case "chunk":
+	case cmd == "chunk":
 		b.chunk(msg)
-	case "delete":
+	case cmd == "delete":
 		b.delete(msg)
-	case "rename":
+	case cmd == "rename":
 		b.rename(msg)
-	case "download":
+	case cmd == "download":
 		b.download(msg)
-	case "help":
+	case cmd == "help":
 		b.help(msg)
-	case "random":
-		b.random(msg, -1)
-	case "random50":
-		b.random(msg, 50)
-	case "loot":
+	case strings.HasPrefix(cmd, "random"):
+		b.random(msg, strings.TrimPrefix(cmd, "random"))
+	case cmd == "loot":
 		b.loot(msg)
-	case "stats":
+	case cmd == "stats":
 		b.stats(msg)
 	default:
 		if cmd != "" {
@@ -361,6 +359,14 @@ func (b *Bot) chunkReply(from *tgbotapi.User, chunkSelector chunkSelectorFunc) {
 		return
 	}
 
+	const maxTelegramMessageSize = 4096
+	for len(chunkText) > maxTelegramMessageSize {
+		curMsgText := chunkText[:maxTelegramMessageSize]
+		chunkText = chunkText[maxTelegramMessageSize:]
+
+		b.replyWithPlainText(from, curMsgText)
+	}
+
 	switch chunkType {
 	case service.ChunkTypeFirst:
 		b.replyWithPlainText(from, chunkText, nextBtn)
@@ -431,7 +437,8 @@ func (b *Bot) list(from *tgbotapi.User, page, pageSize int) {
 	// reply with button for each text and save text index in callback data
 	var buttons []tgbotapi.InlineKeyboardButton
 	for _, t := range texts {
-		btnText := completionPercentString(t.CompletionPercent) + " " + t.Name
+		// TODO: split text based on runes, not bytes
+		btnText := completionPercentString(t.CompletionPercent) + " " + t.Name[0:100]
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(btnText, textSelect+t.UUID))
 	}
 	if more {
@@ -557,7 +564,19 @@ func (b *Bot) help(msg *tgbotapi.Message) {
 	b.replyToMsgWithI18n(msg, helpMsg)
 }
 
-func (b *Bot) random(msg *tgbotapi.Message, atMostChunks int64) {
+func (b *Bot) random(msg *tgbotapi.Message, atMostChunksStr string) {
+	atMostChunks := int64(-1)
+	if atMostChunksStr != "" {
+		var err error
+		atMostChunks, err = strconv.ParseInt(atMostChunksStr, 10, 64)
+		if err != nil {
+			b.replyErrorWithI18n(msg, errorUnknownCommandMsgId, err)
+			return
+		}
+	}
+	if atMostChunks < 1 {
+		atMostChunks = -1
+	}
 	text, err := b.service.RandomText(msg.From.ID, atMostChunks)
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnRandomTextMsgId, err)

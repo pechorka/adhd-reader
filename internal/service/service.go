@@ -225,10 +225,23 @@ func (s *Service) RandomText(userID int64, atMostChunks int64) (storage.TextWith
 	if atMostChunks > 0 {
 		texts = filterTextsByChunkCount(texts, atMostChunks)
 	}
-	if len(texts) == 0 {
-		return storage.TextWithChunkInfo{}, errors.New("no texts")
+
+	unreadTexts := make([]storage.TextWithChunkInfo, 0, len(texts))
+	for _, t := range texts {
+		if !isTextFinished(t.CurrentChunk, t.TotalChunks) {
+			unreadTexts = append(unreadTexts, t)
+		}
 	}
-	return texts[rand.Intn(len(texts))], nil
+
+	if len(unreadTexts) == 0 {
+		return storage.TextWithChunkInfo{}, errors.New("no unread texts")
+	}
+
+	return unreadTexts[rand.Intn(len(unreadTexts))], nil
+}
+
+func isTextFinished(curChunk, totalChunks int64) bool {
+	return curChunk >= totalChunks-1
 }
 
 func filterTextsByChunkCount(texts []storage.TextWithChunkInfo, atMostChunks int64) []storage.TextWithChunkInfo {
@@ -349,7 +362,7 @@ func (s *Service) SetPage(userID, page int64) error {
 
 func (s *Service) NextChunk(userID int64) (storage.Text, string, ChunkType, error) {
 	return s.selectChunk(userID, func(_ storage.Text, curChunk, totalChunks int64) (nextChunk int64, err error) {
-		if curChunk >= totalChunks-1 {
+		if isTextFinished(curChunk, totalChunks) {
 			return 0, ErrTextFinished
 		}
 		return curChunk + 1, nil
