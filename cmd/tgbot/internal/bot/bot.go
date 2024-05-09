@@ -438,7 +438,10 @@ func (b *Bot) list(from *tgbotapi.User, page, pageSize int) {
 	var buttons []tgbotapi.InlineKeyboardButton
 	for _, t := range texts {
 		// TODO: split text based on runes, not bytes
-		btnText := completionPercentString(t.CompletionPercent) + " " + t.Name[0:100]
+		btnText := completionPercentString(t.CompletionPercent) + " " + t.Name
+		if len(btnText) > 100 {
+			btnText = btnText[:97] + "..."
+		}
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(btnText, textSelect+t.UUID))
 	}
 	if more {
