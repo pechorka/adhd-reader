@@ -173,6 +173,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.help(msg)
 	case strings.HasPrefix(cmd, "random"):
 		b.random(msg, strings.TrimPrefix(cmd, "random"))
+	case cmd == "quickwin":
+		b.quickwin(msg)
 	case cmd == "loot":
 		b.loot(msg)
 	case cmd == "stats":
@@ -581,6 +583,15 @@ func (b *Bot) random(msg *tgbotapi.Message, atMostChunksStr string) {
 		atMostChunks = -1
 	}
 	text, err := b.service.RandomText(msg.From.ID, atMostChunks)
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnRandomTextMsgId, err)
+		return
+	}
+	b.selectText(msg.From, text.UUID)
+}
+
+func (b *Bot) quickwin(msg *tgbotapi.Message) {
+	text, err := b.service.QuickWin(msg.From.ID)
 	if err != nil {
 		b.replyErrorWithI18n(msg, errorOnRandomTextMsgId, err)
 		return

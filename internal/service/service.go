@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"math"
 	"math/rand"
 	"time"
 	"unicode/utf8"
@@ -176,6 +177,7 @@ func (s *Service) ListTexts(userID int64, page, pageSize int) (_ []TextWithCompl
 	if err != nil {
 		return nil, false, err
 	}
+
 	texts, more = paginateTexts(texts, page, pageSize)
 	result := make([]TextWithCompletion, 0, len(texts))
 	for _, t := range texts {
@@ -193,7 +195,7 @@ func paginateTexts(texts []storage.TextWithChunkInfo, page, pageSize int) ([]sto
 		page = 1
 	}
 	if pageSize < 1 {
-		pageSize = 50
+		pageSize = 40
 	}
 	start := (page - 1) * pageSize
 	end := start + pageSize
@@ -215,6 +217,28 @@ func calculateCompletionPercent(text storage.TextWithChunkInfo) int {
 		return 0
 	}
 	return int(float64(text.CurrentChunk) / float64(text.TotalChunks-1) * 100)
+}
+
+func (s *Service) QuickWin(userID int64) (storage.TextWithChunkInfo, error) {
+	texts, err := s.s.GetTexts(userID)
+	if err != nil {
+		return storage.TextWithChunkInfo{}, err
+	}
+	minDelta := int64(math.MaxInt64)
+	textI := -1
+	for i, t := range texts {
+		delta := t.TotalChunks - t.CurrentChunk
+		if delta > 0 && delta < minDelta {
+			textI = i
+			minDelta = delta
+		}
+	}
+
+	if textI == -1 {
+		return storage.TextWithChunkInfo{}, errors.New("no texts found")
+	}
+
+	return texts[textI], nil
 }
 
 func (s *Service) RandomText(userID int64, atMostChunks int64) (storage.TextWithChunkInfo, error) {
