@@ -363,8 +363,8 @@ func (b *Bot) chunkReply(from *tgbotapi.User, chunkSelector chunkSelectorFunc) {
 
 	const maxTelegramMessageSize = 4096
 	for len(chunkText) > maxTelegramMessageSize {
-		curMsgText := chunkText[:maxTelegramMessageSize]
-		chunkText = chunkText[maxTelegramMessageSize:]
+		curMsgText := runeslice.NRunes(chunkText, maxTelegramMessageSize/2)
+		chunkText = chunkText[len(curMsgText):]
 
 		b.replyWithPlainText(from, curMsgText)
 	}
