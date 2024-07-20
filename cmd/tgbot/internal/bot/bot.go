@@ -375,6 +375,7 @@ func (b *Bot) chunkReply(from *tgbotapi.User, chunkSelector chunkSelectorFunc) {
 	case service.ChunkTypeFirst:
 		b.replyWithPlainText(from, chunkText, nextBtn)
 	case service.ChunkTypeLast:
+		b.replyWithPlainText(from, chunkText)
 		b.replyToUserWithI18nWithArgs(from, lastChunkMsgId, map[string]string{
 			"text_name": currentText.Name,
 		}, prevBtn, deleteBtn, rereadBtn)
