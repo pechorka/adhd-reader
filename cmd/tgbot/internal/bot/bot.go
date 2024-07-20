@@ -530,7 +530,7 @@ func (b *Bot) rename(msg *tgbotapi.Message) {
 
 func (b *Bot) download(msg *tgbotapi.Message) {
 	page := 0
-	pageSize := 100
+	pageSize := 300
 	type OutputText struct {
 		TextName     string   `json:"textName"`
 		CurrentChunk int64    `json:"currentChunk"`
