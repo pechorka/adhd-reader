@@ -57,6 +57,10 @@ func NewService(
 	}
 }
 
+func (s *Service) GetCurrentFullText(userID int64) (storage.FullText, error) {
+	return s.s.GetCurrentFullText(userID)
+}
+
 func (s *Service) SetChunkSize(userID int64, chunkSize int64) error {
 	if chunkSize < 1 {
 		return errors.New("chunk size must be greater than 0")
@@ -208,7 +212,7 @@ func paginateTexts(texts []storage.TextWithChunkInfo, page, pageSize int) ([]sto
 	return texts[start:end], end < len(texts)
 }
 
-func (s *Service) FullTexts(userID int64, after *time.Time) ([]storage.FullText, error) {
+func (s *Service) FullTexts(userID int64, after *time.Time) ([]storage.TextWithChunks, error) {
 	return s.s.GetFullTexts(userID, after)
 }
 

@@ -169,6 +169,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 		b.rename(msg)
 	case cmd == "download":
 		b.download(msg)
+	case cmd == "cdownload":
+		b.cdownload(msg)
 	case cmd == "help":
 		b.help(msg)
 	case strings.HasPrefix(cmd, "random"):
@@ -562,6 +564,17 @@ func (b *Bot) download(msg *tgbotapi.Message) {
 	}
 
 	doc := tgbotapi.FileBytes{Name: "all_texts.json", Bytes: outBytes}
+	b.send(tgbotapi.NewDocument(msg.Chat.ID, doc))
+}
+
+func (b *Bot) cdownload(msg *tgbotapi.Message) {
+	curText, err := b.service.GetCurrentFullText(msg.From.ID)
+	if err != nil {
+		b.replyErrorWithI18n(msg, errorOnListMsgId, err)
+		return
+	}
+
+	doc := tgbotapi.FileBytes{Name: curText.Name + ".txt", Bytes: []byte(curText.Text)}
 	b.send(tgbotapi.NewDocument(msg.Chat.ID, doc))
 }
 

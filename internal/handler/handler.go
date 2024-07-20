@@ -14,7 +14,7 @@ import (
 )
 
 type Service interface {
-	FullTexts(userID int64, after *time.Time) ([]storage.FullText, error)
+	FullTexts(userID int64, after *time.Time) ([]storage.TextWithChunks, error)
 	SyncTexts(userID int64, texts []service.SyncText) ([]service.SyncText, error)
 	NextChunk(userID int64) (storage.Text, string, service.ChunkType, error)
 	PrevChunk(userID int64) (storage.Text, string, service.ChunkType, error)

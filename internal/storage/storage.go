@@ -78,6 +78,44 @@ func (s *Storage) Close() error {
 	return s.closeFunc()
 }
 
+type FullText struct {
+	Name string
+	Text string
+}
+
+func (s *Storage) GetCurrentFullText(userID int64) (FullText, error) {
+	var fullText FullText
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktUserInfo)
+		if b == nil {
+			return nil
+		}
+		id := textsId(userID)
+		texts, err := getTexts(b, id)
+		if err != nil {
+			return err
+		}
+		if texts.Current == NotSelected {
+			return errors.New("no text selected")
+		}
+
+		tb := tx.Bucket(texts.Texts[texts.Current].BucketName)
+		if tb == nil {
+			return errors.New("current text has incorrect bucket")
+		}
+		bFullText := tb.Get(fullTextKey)
+		if bFullText == nil {
+			return errors.New("new text is missing")
+		}
+		fullText.Text = string(bFullText)
+		fullText.Name = texts.Texts[texts.Current].Name
+
+		return nil
+	})
+
+	return fullText, errors.Wrap(err, "failed to get full text")
+}
+
 func (s *Storage) AddText(userID int64, newText NewText) (string, error) {
 	textUUID := uuid.New().String()
 	err := s.db.Update(func(tx *bolt.Tx) error {
@@ -208,8 +246,8 @@ func (s *Storage) GetTexts(id int64) ([]TextWithChunkInfo, error) {
 	return result, err
 }
 
-func (s *Storage) GetFullTexts(id int64, after *time.Time) ([]FullText, error) {
-	var result []FullText
+func (s *Storage) GetFullTexts(id int64, after *time.Time) ([]TextWithChunks, error) {
+	var result []TextWithChunks
 	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bktUserInfo)
 		if b == nil {
@@ -752,8 +790,8 @@ func enrichTexts(tx *bolt.Tx, texts UserTexts) ([]TextWithChunkInfo, error) {
 	return result, nil
 }
 
-func fullTexts(tx *bolt.Tx, texts UserTexts) ([]FullText, error) {
-	result := make([]FullText, 0, len(texts.Texts))
+func fullTexts(tx *bolt.Tx, texts UserTexts) ([]TextWithChunks, error) {
+	result := make([]TextWithChunks, 0, len(texts.Texts))
 	for _, text := range texts.Texts {
 		textBucket := tx.Bucket(text.BucketName)
 		if textBucket == nil {
@@ -764,7 +802,7 @@ func fullTexts(tx *bolt.Tx, texts UserTexts) ([]FullText, error) {
 		for i := int64(0); i < totalChunks; i++ {
 			chunks = append(chunks, string(textBucket.Get(int64ToBytes(i))))
 		}
-		result = append(result, FullText{
+		result = append(result, TextWithChunks{
 			UUID:         text.UUID,
 			Name:         text.Name,
 			CurrentChunk: text.CurrentChunk,

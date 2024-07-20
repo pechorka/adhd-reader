@@ -31,7 +31,7 @@ type TextWithChunkInfo struct {
 	TotalChunks  int64
 }
 
-type FullText struct {
+type TextWithChunks struct {
 	UUID         string
 	Name         string
 	CurrentChunk int64
