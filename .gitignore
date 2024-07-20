@@ -2,3 +2,4 @@ cfg.json
 db.db
 .idea
 var/
+cmd/ui

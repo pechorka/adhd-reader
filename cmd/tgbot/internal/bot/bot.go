@@ -546,26 +546,51 @@ func (b *Bot) download(msg *tgbotapi.Message) {
 	}
 
 	outTexts := make([]OutputText, 0, len(texts))
+	curSize := 0
+	part := 1
+	sendPart := func() {
+		if len(outTexts) == 0 {
+			return
+		}
+
+		out := Output{
+			Texts: outTexts,
+		}
+
+		outBytes, err := json.Marshal(out)
+		if err != nil {
+			b.replyErrorWithI18n(msg, errorOnFullTextEncodeMsgId, err)
+			return
+		}
+
+		doc := tgbotapi.FileBytes{
+			Name:  fmt.Sprintf("all_texts_part%d.json", part),
+			Bytes: outBytes,
+		}
+		b.send(tgbotapi.NewDocument(msg.Chat.ID, doc))
+		part++
+		curSize = 0
+		outTexts = outTexts[:0]
+	}
 	for _, t := range texts {
+		localCurSize := 0
+		localCurSize += len(t.Name)
+		localCurSize += 8 // for current chunk
+		for _, chunk := range t.Chunks {
+			localCurSize += len(chunk)
+		}
+		if curSize+localCurSize > 45*1<<20 {
+			sendPart()
+		}
+
 		outTexts = append(outTexts, OutputText{
 			TextName:     t.Name,
 			CurrentChunk: t.CurrentChunk,
 			Chunks:       t.Chunks,
 		})
+		curSize += localCurSize
 	}
-
-	out := Output{
-		Texts: outTexts,
-	}
-
-	outBytes, err := json.Marshal(out)
-	if err != nil {
-		b.replyErrorWithI18n(msg, errorOnFullTextEncodeMsgId, err)
-		return
-	}
-
-	doc := tgbotapi.FileBytes{Name: "all_texts.json", Bytes: outBytes}
-	b.send(tgbotapi.NewDocument(msg.Chat.ID, doc))
+	sendPart()
 }
 
 func (b *Bot) cdownload(msg *tgbotapi.Message) {
