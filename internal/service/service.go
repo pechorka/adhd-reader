@@ -212,8 +212,8 @@ func paginateTexts(texts []storage.TextWithChunkInfo, page, pageSize int) ([]sto
 	return texts[start:end], end < len(texts)
 }
 
-func (s *Service) FullTexts(userID int64, after *time.Time) ([]storage.TextWithChunks, error) {
-	return s.s.GetFullTexts(userID, after)
+func (s *Service) FullTexts(userID int64, after *time.Time, page, pageSize int) ([]storage.TextWithChunks, error) {
+	return s.s.GetFullTexts(userID, after, page, pageSize)
 }
 
 func calculateCompletionPercent(text storage.TextWithChunkInfo) int {

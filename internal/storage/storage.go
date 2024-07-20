@@ -246,7 +246,7 @@ func (s *Storage) GetTexts(id int64) ([]TextWithChunkInfo, error) {
 	return result, err
 }
 
-func (s *Storage) GetFullTexts(id int64, after *time.Time) ([]TextWithChunks, error) {
+func (s *Storage) GetFullTexts(id int64, after *time.Time, page, pageSize int) ([]TextWithChunks, error) {
 	var result []TextWithChunks
 	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bktUserInfo)
@@ -263,6 +263,21 @@ func (s *Storage) GetFullTexts(id int64, after *time.Time) ([]TextWithChunks, er
 				return text.CreatedAt.After(*after)
 			})
 		}
+		if page < 0 {
+			result, err = fullTexts(tx, texts)
+			return err
+		}
+
+		from := page * pageSize
+		if from > len(texts.Texts) {
+			return nil
+		}
+		to := from + pageSize
+		if to > len(texts.Texts) {
+			to = len(texts.Texts)
+		}
+
+		texts.Texts = texts.Texts[from:to]
 		result, err = fullTexts(tx, texts)
 		return err
 	})

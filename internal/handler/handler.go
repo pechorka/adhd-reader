@@ -14,7 +14,7 @@ import (
 )
 
 type Service interface {
-	FullTexts(userID int64, after *time.Time) ([]storage.TextWithChunks, error)
+	FullTexts(userID int64, after *time.Time, page, pageSize int) ([]storage.TextWithChunks, error)
 	SyncTexts(userID int64, texts []service.SyncText) ([]service.SyncText, error)
 	NextChunk(userID int64) (storage.Text, string, service.ChunkType, error)
 	PrevChunk(userID int64) (storage.Text, string, service.ChunkType, error)
@@ -57,7 +57,7 @@ func (h *Handlers) GetTexts(w http.ResponseWriter, r *http.Request) {
 		}
 		after = &afterT
 	}
-	texts, err := h.svc.FullTexts(userID, after)
+	texts, err := h.svc.FullTexts(userID, after, -1, 0)
 	if err != nil {
 		respond.ErrorWithCode(w, http.StatusInternalServerError, respond.CODE_INTERNAL_ERROR)
 		return

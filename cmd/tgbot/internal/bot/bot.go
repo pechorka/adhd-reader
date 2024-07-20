@@ -529,12 +529,8 @@ func (b *Bot) rename(msg *tgbotapi.Message) {
 }
 
 func (b *Bot) download(msg *tgbotapi.Message) {
-	texts, err := b.service.FullTexts(msg.From.ID, nil)
-	if err != nil {
-		b.replyErrorWithI18n(msg, errorOnListMsgId, err)
-		return
-	}
-
+	page := 0
+	pageSize := 300
 	type OutputText struct {
 		TextName     string   `json:"textName"`
 		CurrentChunk int64    `json:"currentChunk"`
@@ -545,7 +541,7 @@ func (b *Bot) download(msg *tgbotapi.Message) {
 		Texts []OutputText `json:"texts"`
 	}
 
-	outTexts := make([]OutputText, 0, len(texts))
+	outTexts := make([]OutputText, 0, pageSize)
 	curSize := 0
 	part := 1
 	sendPart := func() {
@@ -572,23 +568,35 @@ func (b *Bot) download(msg *tgbotapi.Message) {
 		curSize = 0
 		outTexts = outTexts[:0]
 	}
-	for _, t := range texts {
-		localCurSize := 0
-		localCurSize += len(t.Name)
-		localCurSize += 8 // for current chunk
-		for _, chunk := range t.Chunks {
-			localCurSize += len(chunk)
+	for {
+		texts, err := b.service.FullTexts(msg.From.ID, nil, page, pageSize)
+		if err != nil {
+			b.replyErrorWithI18n(msg, errorOnListMsgId, err)
+			return
 		}
-		if curSize+localCurSize > 45*1<<20 {
-			sendPart()
+		if len(texts) == 0 {
+			break
 		}
 
-		outTexts = append(outTexts, OutputText{
-			TextName:     t.Name,
-			CurrentChunk: t.CurrentChunk,
-			Chunks:       t.Chunks,
-		})
-		curSize += localCurSize
+		for _, t := range texts {
+			localCurSize := 0
+			localCurSize += len(t.Name)
+			localCurSize += 8 // for current chunk
+			for _, chunk := range t.Chunks {
+				localCurSize += len(chunk)
+			}
+			if curSize+localCurSize > 45*1<<20 {
+				sendPart()
+			}
+			outTexts = append(outTexts, OutputText{
+				TextName:     t.Name,
+				CurrentChunk: t.CurrentChunk,
+				Chunks:       t.Chunks,
+			})
+			curSize += localCurSize
+		}
+
+		page++
 	}
 	sendPart()
 }
