@@ -585,7 +585,7 @@ func (b *Bot) download(msg *tgbotapi.Message) {
 			for _, chunk := range t.Chunks {
 				localCurSize += len(chunk)
 			}
-			if curSize+localCurSize > 45*1<<20 {
+			if curSize+localCurSize > 20*1<<20 {
 				sendPart()
 			}
 			outTexts = append(outTexts, OutputText{
