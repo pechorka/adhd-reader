@@ -29,6 +29,7 @@ func run() error {
 	}
 
 	filePath := os.Args[1]
+	filePath = strings.ReplaceAll(filePath, "\\", "/")
 	textBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return errs.Wrap(err, "failed to read pdf")
