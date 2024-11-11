@@ -7,7 +7,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"sync"
 
 	"slices"
 
@@ -63,56 +62,100 @@ type freq struct {
 
 func countSentenceFreqs(text string) []freq {
 	var stext []string
-	for _, word := range strings.Split(text, " ") {
-		word = strings.TrimSpace(word)
-		word = strings.Trim(word, ".,!?-«»‒")
-		word = strings.ToLower(word)
-		if word != "" && !skip[word] {
-			stext = append(stext, word)
+	rawSplit := strings.Split(text, " ")
+	for _, rawWord := range rawSplit {
+		for _, word := range strings.Split(rawWord, "\n") {
+			word = strings.TrimSpace(word)
+			word = strings.Trim(word, ".,!?-«»‒")
+			word = strings.ToLower(word)
+			if word != "" && !skip[word] {
+				stext = append(stext, word)
+			}
 		}
 	}
-	ftext := strings.Join(stext, " ")
-	fmt.Printf("%d words in text\n", len(stext))
-
+	trie := NewTrie()
 	var result []freq
-	mu := &sync.Mutex{}
-	wg := &sync.WaitGroup{}
 	wordCount := 2
 	for wordCount < 10 {
-		wg.Add(1)
-		go func(wc int) {
-			defer wg.Done()
-			defer fmt.Printf("finished analyzing %d word sentences\n", wc)
-			dedup := make(map[string]bool)
-			for i := 0; i < len(stext)-wc; i++ {
-				sentence := strings.Join(stext[i:i+wc], " ")
-				if dedup[sentence] || skip[sentence] {
-					continue
-				}
-				dedup[sentence] = true
-				f := strings.Count(ftext, sentence)
-				if f > 1 {
-					mu.Lock()
-					result = append(result, freq{
-						sentence: sentence,
-						freq:     f,
-					})
-					if len(result)%1000 == 0 {
-						fmt.Printf("found %d freqs\n", len(result))
-					}
-					mu.Unlock()
-				}
+		for i := 0; i < len(stext)-wordCount; i++ {
+			words := stext[i : i+wordCount]
+			sentence := strings.Join(words, " ")
+			if skip[sentence] {
+				continue
 			}
-		}(wordCount)
+			trie.Insert(words)
+		}
 		wordCount++
 	}
-
-	wg.Wait()
+	sentenceMap := trie.CollectSentences()
+	for sentence, count := range sentenceMap {
+		if count > 1 {
+			result = append(result, freq{
+				sentence: sentence,
+				freq:     count,
+			})
+		}
+	}
 	slices.SortFunc(result, func(f1, f2 freq) int {
 		return f2.freq - f1.freq
 	})
 
 	return result
+}
+
+// Node represents each node in the Trie
+type Node struct {
+	children map[string]*Node
+	count    int
+}
+
+// NewNode creates a new Trie node
+func NewNode() *Node {
+	return &Node{children: make(map[string]*Node)}
+}
+
+// Trie represents the whole Trie structure
+type Trie struct {
+	root *Node
+}
+
+// NewTrie creates a new Trie
+func NewTrie() *Trie {
+	return &Trie{root: NewNode()}
+}
+
+// Insert adds a sentence to the Trie and increments its frequency count
+func (t *Trie) Insert(words []string) {
+	current := t.root
+
+	for _, word := range words {
+		if _, exists := current.children[word]; !exists {
+			current.children[word] = NewNode()
+		}
+		current = current.children[word]
+	}
+
+	current.count++ // Increment the sentence count at the leaf node
+}
+
+// CollectSentences recursively collects all sentences with their frequency
+func (t *Trie) CollectSentences() map[string]int {
+	sentenceMap := make(map[string]int)
+	var collect func(node *Node, path []string)
+
+	collect = func(node *Node, path []string) {
+		if node.count > 0 {
+			sentence := strings.Join(path, " ")
+			sentenceMap[sentence] = node.count
+		}
+
+		for word, child := range node.children {
+			collect(child, append(path, word))
+		}
+	}
+
+	collect(t.root, []string{})
+	return sentenceMap
 }
 
 var skip = map[string]bool{
