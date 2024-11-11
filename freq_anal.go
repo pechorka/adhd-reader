@@ -10,7 +10,10 @@ import (
 
 	"slices"
 
+	"github.com/pechorka/adhd-reader/pkg/fileparser/epub"
+	"github.com/pechorka/adhd-reader/pkg/fileparser/fb2"
 	"github.com/pechorka/adhd-reader/pkg/fileparser/pdf"
+	"github.com/pechorka/adhd-reader/pkg/fileparser/plaintext"
 	"github.com/pechorka/gostdlib/pkg/errs"
 )
 
@@ -26,17 +29,28 @@ func run() error {
 	}
 
 	filePath := os.Args[1]
-	pdfBytes, err := os.ReadFile(filePath)
+	textBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return errs.Wrap(err, "failed to read pdf")
 	}
 
-	pdfText, err := pdf.PlaintText(pdfBytes)
-	if err != nil {
-		return errs.Wrap(err, "failed to read text from pdf")
+	var text string
+	switch path.Ext(filePath) {
+	case ".pdf":
+		text, err = pdf.PlaintText(textBytes)
+	case ".epub":
+		text, err = epub.PlainText(textBytes)
+	case ".fb2":
+		text, err = fb2.PlainText(textBytes)
+	default:
+		text, err = plaintext.PlainText(textBytes)
 	}
 
-	freqs := countSentenceFreqs(pdfText)
+	if err != nil {
+		return errs.Wrapf(err, "failed to read text from %s", filePath)
+	}
+
+	freqs := countSentenceFreqs(text)
 
 	fileName := path.Base(filePath)
 	f, err := os.Create(fileName + "freqs.csv")
