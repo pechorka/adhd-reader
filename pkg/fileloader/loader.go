@@ -10,7 +10,7 @@ import (
 
 const (
 	defaultMaxFileSize   = 50 * 1024 * 1024 // 20 MB
-	defaultClientTimeout = 10 * time.Second
+	defaultClientTimeout = 30 * time.Second
 )
 
 var ErrFileIsTooBig = errors.New("file is too big")
