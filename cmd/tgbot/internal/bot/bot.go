@@ -436,7 +436,7 @@ func (b *Bot) progress(msg *tgbotapi.Message) {
 
 	progress := float32(curText.CurrentChunk) / float32(curText.TotalChunks) * 100.0
 	progressText := fmt.Sprintf(
-		"Current text is <code>%s<code>.\nCurrent chunk is %d/%d. You completed %.0f%% of the text.",
+		"Current text is <code>%s</code>.\nCurrent chunk is %d/%d. You completed %.0f%% of the text.",
 		curText.Name, curText.CurrentChunk, curText.TotalChunks, progress,
 	)
 	replyMsg := tgbotapi.NewMessage(msg.From.ID, progressText)
