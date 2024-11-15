@@ -57,6 +57,10 @@ func NewService(
 	}
 }
 
+func (s *Service) GetCurrentText(userID int64) (storage.TextWithChunkInfo, error) {
+	return s.s.GetCurrentText(userID)
+}
+
 func (s *Service) GetCurrentFullText(userID int64) (storage.FullText, error) {
 	return s.s.GetCurrentFullText(userID)
 }

@@ -240,8 +240,30 @@ func (s *Storage) GetTexts(id int64) ([]TextWithChunkInfo, error) {
 		if err != nil {
 			return err
 		}
-		result, err = enrichTexts(tx, texts)
+		result, err = enrichTexts(tx, texts.Texts...)
 		return err
+	})
+	return result, err
+}
+
+func (s *Storage) GetCurrentText(id int64) (TextWithChunkInfo, error) {
+	var result TextWithChunkInfo
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktUserInfo)
+		if b == nil {
+			return nil
+		}
+		var err error
+		texts, err := getTexts(b, textsId(id))
+		if err != nil {
+			return err
+		}
+		enriched, err := enrichTexts(tx, texts.Texts...)
+		if err != nil {
+			return errors.Wrap(err, "failed to enrich text")
+		}
+		result = enriched[0]
+		return nil
 	})
 	return result, err
 }
@@ -488,7 +510,7 @@ func (s *Storage) Analytics() ([]UserAnalytics, error) {
 			if err != nil { // should not happen
 				return errors.Wrap(err, "failed to parse user id")
 			}
-			textsAnalytics, err := enrichTexts(tx, texts)
+			textsAnalytics, err := enrichTexts(tx, texts.Texts...)
 			if err != nil {
 				return errors.Wrap(err, "failed to enrich texts")
 			}
@@ -787,9 +809,9 @@ func unmarshalTexts(v []byte) (texts UserTexts, err error) {
 }
 
 // enrichTexts enriches texts with current chunk
-func enrichTexts(tx *bolt.Tx, texts UserTexts) ([]TextWithChunkInfo, error) {
-	result := make([]TextWithChunkInfo, 0, len(texts.Texts))
-	for _, text := range texts.Texts {
+func enrichTexts(tx *bolt.Tx, texts ...Text) ([]TextWithChunkInfo, error) {
+	result := make([]TextWithChunkInfo, 0, len(texts))
+	for _, text := range texts {
 		textBucket := tx.Bucket(text.BucketName)
 		if textBucket == nil {
 			return nil, errors.New("unexpected error: text bucket not found")

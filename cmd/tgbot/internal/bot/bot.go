@@ -157,6 +157,8 @@ func (b *Bot) handleMsg(msg *tgbotapi.Message) {
 	switch cmd := msg.Command(); {
 	case cmd == "start":
 		b.start(msg)
+	case cmd == "progress":
+		b.progress(msg)
 	case cmd == "list":
 		b.listCmd(msg)
 	case cmd == "page":
@@ -423,6 +425,22 @@ func (b *Bot) start(msg *tgbotapi.Message) {
 
 		b.replyToUserWithI18n(msg.From, eighthMsg)
 	}()
+}
+
+func (b *Bot) progress(msg *tgbotapi.Message) {
+	curText, err := b.service.GetCurrentText(msg.From.ID)
+	if err != nil {
+		b.replyError(msg, "failed to get current text", err)
+		return
+	}
+
+	progress := float32(curText.CurrentChunk) / float32(curText.TotalChunks) * 100.0
+	progressText := fmt.Sprintf(
+		"Current text is <code>%s<code>.<br>Current chunk is %d/%d. You completed %.0f%% of the text.",
+		curText.Name, curText.CurrentChunk, curText.TotalChunks, progress,
+	)
+	replyMsg := tgbotapi.NewMessage(msg.From.ID, progressText)
+	b.sendMsg(replyMsg)
 }
 
 func (b *Bot) listCmd(msg *tgbotapi.Message) {
