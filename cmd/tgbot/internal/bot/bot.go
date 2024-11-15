@@ -778,6 +778,7 @@ func (b *Bot) saveTextFromMessage(msg *tgbotapi.Message) {
 	if len(supportedLinks) > 0 {
 		b.sendToUser(msg.From.ID, strings.Join(supportedLinks, "\n"))
 		b.replyToUserWithI18n(msg.From, supportedLinksTutorialMsgId)
+		return
 	}
 	// else assume it's plain text
 	b.msgQueue.Add(msg.From.ID, text)
