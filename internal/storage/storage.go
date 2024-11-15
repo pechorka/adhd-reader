@@ -258,7 +258,10 @@ func (s *Storage) GetCurrentText(id int64) (TextWithChunkInfo, error) {
 		if err != nil {
 			return err
 		}
-		enriched, err := enrichTexts(tx, texts.Texts...)
+		if texts.Current == NotSelected {
+			return errors.New("no selected text")
+		}
+		enriched, err := enrichTexts(tx, texts.Texts[texts.Current])
 		if err != nil {
 			return errors.Wrap(err, "failed to enrich text")
 		}
