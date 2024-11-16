@@ -173,6 +173,10 @@ func (t *Trie) CollectSentences() map[string]int {
 	return sentenceMap
 }
 
+// skip is a map that contains a set of words and characters to be skipped during frequency analysis.
+// The keys of the map are the words or characters to be skipped, and the values are always true.
+// This map includes common conjunctions, prepositions, articles, interjections, and other frequently
+// used words in both Russian and English languages that are typically not useful for frequency analysis.
 var skip = map[string]bool{
 	"—":                  true,
 	"т":                  true,
